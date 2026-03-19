@@ -2,6 +2,7 @@ import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import { connectDB } from "./db/index.js";
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
@@ -12,6 +13,8 @@ import { registrationRoutes } from "./routes/registration.js";
 import { documentRoutes } from "./routes/documents.js";
 import { paymentRoutes } from "./routes/payments.js";
 import { progressRoutes } from "./routes/progress.js";
+import path from "path";
+import fs from "fs";
 
 async function buildServer() {
   const fastify = Fastify({
@@ -25,6 +28,27 @@ async function buildServer() {
 
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || "lms-secret-key-change-in-production",
+  });
+
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+    },
+  });
+
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  fastify.get("/uploads/*", async (request: any, reply: any) => {
+    const filePath = path.join(process.cwd(), request.url);
+    if (fs.existsSync(filePath)) {
+      const stream = fs.createReadStream(filePath);
+      reply.type("application/octet-stream").send(stream);
+      return;
+    }
+    return reply.status(404).send({ message: "File not found" });
   });
 
   fastify.decorate("authenticate", async function (request: any, reply: any) {

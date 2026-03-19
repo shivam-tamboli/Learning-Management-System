@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { registrationService, courseService, userService } from "@/lib/api";
+import { registrationService, courseService, userService, documentService } from "@/lib/api";
 import styles from "./register.module.css";
 
 interface BasicDetails {
@@ -41,6 +41,13 @@ interface Health {
   allergies: string;
 }
 
+interface Payment {
+  amount: string;
+  status: "pending" | "completed";
+  reference: string;
+  notes: string;
+}
+
 export default function AddStudentPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
@@ -48,6 +55,12 @@ export default function AddStudentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<{ [key: string]: File | null }>({
+    idProof: null,
+    addressProof: null,
+    educationCertificate: null,
+  });
+  const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
     firstName: "",
@@ -82,6 +95,13 @@ export default function AddStudentPage() {
     conditions: "",
     medications: "",
     allergies: "",
+  });
+
+  const [payment, setPayment] = useState<Payment>({
+    amount: "",
+    status: "pending",
+    reference: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -135,12 +155,61 @@ export default function AddStudentPage() {
     setCurrentStep(6);
   };
 
+  const handleDocumentsSubmit = () => {
+    if (!documents.idProof || !documents.addressProof || !documents.educationCertificate) {
+      alert("Please upload all required documents");
+      return;
+    }
+    setCurrentStep(7);
+  };
+
+  const handlePaymentSubmit = () => {
+    if (!payment.amount || parseFloat(payment.amount) <= 0) {
+      alert("Please enter a valid payment amount");
+      return;
+    }
+    setCurrentStep(8);
+  };
+
+  const handleFileChange = (type: string, file: File | null) => {
+    setDocuments((prev) => ({ ...prev, [type]: file }));
+  };
+
   const toggleCourse = (courseId: string) => {
     setSelectedCourses((prev) =>
       prev.includes(courseId)
         ? prev.filter((id) => id !== courseId)
         : [...prev, courseId]
     );
+  };
+
+  const uploadDocuments = async (studentId: string): Promise<string[]> => {
+    const uploadedIds: string[] = [];
+    const docTypes = ["idProof", "addressProof", "educationCertificate"];
+    const docNames: Record<string, string> = {
+      idProof: "ID Proof",
+      addressProof: "Address Proof",
+      educationCertificate: "Education Certificate",
+    };
+
+    for (const type of docTypes) {
+      const file = documents[type as keyof typeof documents];
+      if (file) {
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("studentId", studentId);
+          formData.append("type", docNames[type]);
+
+          const res = await documentService.upload(formData);
+          uploadedIds.push(res.data.id || res.data._id);
+        } catch (error) {
+          console.error(`Failed to upload ${type}:`, error);
+        }
+      }
+    }
+
+    return uploadedIds;
   };
 
   const handleSubmit = async () => {
@@ -183,6 +252,12 @@ export default function AddStudentPage() {
         data: health,
       });
 
+      await registrationService.saveStep({
+        studentId: registrationId,
+        step: 6,
+        data: payment,
+      });
+
       const userRes = await userService.create({
         name: `${basicDetails.firstName} ${basicDetails.lastName}`,
         email: basicDetails.email,
@@ -191,7 +266,11 @@ export default function AddStudentPage() {
         approved: false,
       });
 
-      await registrationService.updateStudent(registrationId, userRes.data.id);
+      const studentId = userRes.data.id;
+
+      await registrationService.updateStudent(registrationId, studentId);
+
+      await uploadDocuments(studentId);
 
       alert("Registration submitted successfully!");
       router.push("/admin/student");
@@ -205,7 +284,7 @@ export default function AddStudentPage() {
 
   const renderStepIndicator = () => (
     <div className={styles.stepIndicator}>
-      {[1, 2, 3, 4, 5, 6].map((step) => (
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => (
         <div
           key={step}
           className={`${styles.step} ${currentStep >= step ? styles.active : ""} ${currentStep === step ? styles.current : ""}`}
@@ -217,7 +296,9 @@ export default function AddStudentPage() {
             {step === 3 && "Contact"}
             {step === 4 && "Education"}
             {step === 5 && "Health"}
-            {step === 6 && "Courses"}
+            {step === 6 && "Documents"}
+            {step === 7 && "Payment"}
+            {step === 8 && "Courses"}
           </div>
         </div>
       ))}
@@ -503,6 +584,148 @@ export default function AddStudentPage() {
 
   const renderStep6 = () => (
     <div className={styles.formStep}>
+      <h2>Upload Documents</h2>
+      <p className={styles.subtitle}>Please upload the following documents (PDF, JPG, PNG)</p>
+      
+      <div className={styles.documentList}>
+        <div className={styles.documentItem}>
+          <div className={styles.documentInfo}>
+            <h4>ID Proof *</h4>
+            <p>Aadhaar Card, PAN Card, Passport, or Voter ID</p>
+          </div>
+          <label className={styles.uploadButton}>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => handleFileChange("idProof", e.target.files?.[0] || null)}
+              style={{ display: "none" }}
+            />
+            {documents.idProof ? documents.idProof.name : "Choose File"}
+          </label>
+          {documents.idProof && (
+            <span className={styles.fileName}>{documents.idProof.name}</span>
+          )}
+        </div>
+
+        <div className={styles.documentItem}>
+          <div className={styles.documentInfo}>
+            <h4>Address Proof *</h4>
+            <p>Utility Bill, Bank Statement, or Rent Agreement</p>
+          </div>
+          <label className={styles.uploadButton}>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => handleFileChange("addressProof", e.target.files?.[0] || null)}
+              style={{ display: "none" }}
+            />
+            {documents.addressProof ? documents.addressProof.name : "Choose File"}
+          </label>
+          {documents.addressProof && (
+            <span className={styles.fileName}>{documents.addressProof.name}</span>
+          )}
+        </div>
+
+        <div className={styles.documentItem}>
+          <div className={styles.documentInfo}>
+            <h4>Education Certificate *</h4>
+            <p>Highest qualification certificate or marksheet</p>
+          </div>
+          <label className={styles.uploadButton}>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => handleFileChange("educationCertificate", e.target.files?.[0] || null)}
+              style={{ display: "none" }}
+            />
+            {documents.educationCertificate ? documents.educationCertificate.name : "Choose File"}
+          </label>
+          {documents.educationCertificate && (
+            <span className={styles.fileName}>{documents.educationCertificate.name}</span>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.documentSummary}>
+        <div className={`${styles.docStatus} ${documents.idProof ? styles.complete : ""}`}>
+          {documents.idProof ? "✓" : "○"} ID Proof
+        </div>
+        <div className={`${styles.docStatus} ${documents.addressProof ? styles.complete : ""}`}>
+          {documents.addressProof ? "✓" : "○"} Address Proof
+        </div>
+        <div className={`${styles.docStatus} ${documents.educationCertificate ? styles.complete : ""}`}>
+          {documents.educationCertificate ? "✓" : "○"} Education Certificate
+        </div>
+      </div>
+
+      <div className={styles.actions}>
+        <button type="button" onClick={() => setCurrentStep(5)} className={styles.backBtn}>
+          ← Back
+        </button>
+        <button type="button" onClick={handleDocumentsSubmit} className={styles.nextBtn}>
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep7 = () => (
+    <div className={styles.formStep}>
+      <h2>Payment Information</h2>
+      <p className={styles.subtitle}>Record payment details for this registration</p>
+      <div className={styles.formGrid}>
+        <div className={styles.field}>
+          <label>Amount (INR) *</label>
+          <input
+            type="number"
+            value={payment.amount}
+            onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
+            placeholder="Enter amount"
+          />
+        </div>
+        <div className={styles.field}>
+          <label>Payment Status</label>
+          <select
+            value={payment.status}
+            onChange={(e) => setPayment({ ...payment, status: e.target.value as "pending" | "completed" })}
+          >
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        <div className={styles.field}>
+          <label>Reference / Transaction ID</label>
+          <input
+            type="text"
+            value={payment.reference}
+            onChange={(e) => setPayment({ ...payment, reference: e.target.value })}
+            placeholder="Transaction ID, Receipt No., etc."
+          />
+        </div>
+        <div className={styles.field}>
+          <label>Notes</label>
+          <textarea
+            value={payment.notes}
+            onChange={(e) => setPayment({ ...payment, notes: e.target.value })}
+            placeholder="Any additional notes about the payment"
+            rows={3}
+            style={{ gridColumn: "1 / -1" }}
+          />
+        </div>
+      </div>
+      <div className={styles.actions}>
+        <button type="button" onClick={() => setCurrentStep(6)} className={styles.backBtn}>
+          ← Back
+        </button>
+        <button type="button" onClick={handlePaymentSubmit} className={styles.nextBtn}>
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep8 = () => (
+    <div className={styles.formStep}>
       <h2>Select Courses</h2>
       <p className={styles.subtitle}>Choose the courses you want to enroll in</p>
       
@@ -545,6 +768,12 @@ export default function AddStudentPage() {
             <strong>{basicDetails.email}</strong>
           </div>
           <div className={styles.summaryItem}>
+            <span>Payment:</span>
+            <strong className={payment.status === "completed" ? "text-green-600" : "text-yellow-600"}>
+              {payment.status === "completed" ? "✓ Completed" : "○ Pending"} - ₹{payment.amount || 0}
+            </strong>
+          </div>
+          <div className={styles.summaryItem}>
             <span>Selected Courses:</span>
             <strong>{selectedCourses.length}</strong>
           </div>
@@ -552,7 +781,7 @@ export default function AddStudentPage() {
       </div>
 
       <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(5)} className={styles.backBtn}>
+        <button type="button" onClick={() => setCurrentStep(7)} className={styles.backBtn}>
           ← Back
         </button>
         <button
@@ -596,6 +825,8 @@ export default function AddStudentPage() {
         {currentStep === 4 && renderStep4()}
         {currentStep === 5 && renderStep5()}
         {currentStep === 6 && renderStep6()}
+        {currentStep === 7 && renderStep7()}
+        {currentStep === 8 && renderStep8()}
       </div>
     </div>
   );

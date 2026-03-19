@@ -3,13 +3,6 @@ import { getDB } from "../db/index.js";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
 
-interface RegistrationBody {
-  studentId?: string;
-  courseIds: string[];
-  step: number;
-  data: any;
-}
-
 function isValidObjectId(id: string): boolean {
   try {
     new ObjectId(id);
@@ -30,7 +23,7 @@ export async function registrationRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post<{ Body: RegistrationBody }>(
+  fastify.post<{ Body: { studentId?: string; courseIds?: string[]; step: number; data: any } }>(
     "/step",
     { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
     async (request, reply) => {
@@ -42,11 +35,12 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           courseIds,
           status: "pending",
           createdAt: new Date(),
-          basicDetails: data
+          basicDetails: data,
+          payment: { status: "pending", amount: 0 }
         };
 
         const result = await db.collection("registrations").insertOne(registrationData);
-        return { id: result.insertedId.toString(), message: "Registration started" };
+        return reply.send({ id: result.insertedId.toString(), message: "Registration started" });
       }
 
       if (studentId && isValidObjectId(studentId)) {
@@ -62,6 +56,7 @@ export async function registrationRoutes(fastify: FastifyInstance) {
         else if (step === 3) updateData.contact = data;
         else if (step === 4) updateData.education = data;
         else if (step === 5) updateData.health = data;
+        else if (step === 6) updateData.payment = data;
 
         if (Object.keys(updateData).length > 0) {
           await db.collection("registrations").updateOne(
@@ -70,7 +65,7 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           );
         }
 
-        return { message: "Step data saved", id: studentId };
+        return reply.send({ message: "Step data saved", id: studentId });
       }
 
       return reply.status(400).send({ message: "Invalid request. Step 1 requires courseIds, other steps require studentId" });
@@ -95,6 +90,36 @@ export async function registrationRoutes(fastify: FastifyInstance) {
       );
 
       return { message: "Student linked to registration" };
+    }
+  );
+
+  fastify.put<{ Params: { id: string }; Body: { payment?: { amount: number; status: string; reference?: string; notes?: string } } }>(
+    "/:id/payment",
+    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const { payment } = request.body;
+      const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid registration ID" });
+      }
+
+      if (!payment) {
+        return reply.status(400).send({ message: "Payment data is required" });
+      }
+
+      const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
+      if (!registration) {
+        return reply.status(404).send({ message: "Registration not found" });
+      }
+
+      await db.collection("registrations").updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { payment: { ...payment, updatedAt: new Date() } } }
+      );
+
+      return reply.send({ message: "Payment updated successfully", payment });
     }
   );
 
@@ -134,49 +159,102 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ message: "Registration not found" });
         }
 
-        const firstName = registration.basicDetails?.firstName || "Student";
-        const lastName = registration.basicDetails?.lastName || "";
-        const randomPassword = Math.random().toString(36).slice(-8);
-        const hashedPassword = await bcrypt.hash(randomPassword, 10);
-
-        const userEmail = registration.basicDetails?.email || 
-          `${firstName.toLowerCase()}.${lastName.toLowerCase()}@student.lms`;
-
-        const existingUser = await db.collection("users").findOne({ email: userEmail });
-        if (existingUser) {
-          return reply.status(400).send({ message: "User with this email already exists" });
+        if (registration.status === "approved") {
+          return reply.status(400).send({ message: "Student is already approved" });
         }
 
-        const userResult = await db.collection("users").insertOne({
-          name: `${firstName} ${lastName}`.trim(),
-          email: userEmail,
-          password: hashedPassword,
-          role: "student",
-          approved: true,
-          createdAt: new Date()
-        });
+        if (registration.status === "rejected") {
+          return reply.status(400).send({ message: "Cannot approve a rejected registration. Create a new one." });
+        }
+
+        if (!registration.payment || registration.payment.status !== "completed") {
+          return reply.status(400).send({ message: "Cannot approve: Payment not completed. Please update payment status first." });
+        }
+
+        const firstName = registration.basicDetails?.firstName || "Student";
+        const lastName = registration.basicDetails?.lastName || "";
+        const userEmail = registration.basicDetails?.email?.trim();
+
+        let userId: string;
+        let credentials: { email: string; password: string };
+
+        if (registration.userId) {
+          const existingUser = await db.collection("users").findOne({ _id: new ObjectId(registration.userId) });
+          if (existingUser) {
+            const newPassword = Math.random().toString(36).slice(-8);
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await db.collection("users").updateOne(
+              { _id: new ObjectId(registration.userId) },
+              { $set: { approved: true, password: hashedPassword } }
+            );
+            userId = registration.userId;
+            credentials = { email: existingUser.email, password: newPassword };
+          } else {
+            const randomPassword = Math.random().toString(36).slice(-8);
+            const hashedPassword = await bcrypt.hash(randomPassword, 10);
+            const userResult = await db.collection("users").insertOne({
+              name: `${firstName} ${lastName}`.trim(),
+              email: userEmail,
+              password: hashedPassword,
+              role: "student",
+              approved: true,
+              createdAt: new Date()
+            });
+            userId = userResult.insertedId.toString();
+            credentials = { email: userEmail, password: randomPassword };
+          }
+        } else {
+          const randomPassword = Math.random().toString(36).slice(-8);
+          const hashedPassword = await bcrypt.hash(randomPassword, 10);
+          const userResult = await db.collection("users").insertOne({
+            name: `${firstName} ${lastName}`.trim(),
+            email: userEmail,
+            password: hashedPassword,
+            role: "student",
+            approved: true,
+            createdAt: new Date()
+          });
+          userId = userResult.insertedId.toString();
+          credentials = { email: userEmail, password: randomPassword };
+        }
 
         await db.collection("registrations").updateOne(
           { _id: new ObjectId(id) },
           { $set: { 
             status: "approved", 
-            userId: userResult.insertedId.toString(), 
-            credentials: { email: userEmail, password: randomPassword },
+            userId,
+            credentials,
             approvedAt: new Date()
           }}
         );
 
-        return { 
-          message: "Student approved and credentials generated", 
-          credentials: { email: userEmail, password: randomPassword },
-          userId: userResult.insertedId.toString()
-        };
+        return reply.send({ 
+          message: "Student approved successfully", 
+          credentials,
+          userId,
+          status: "approved"
+        });
       } else if (action === "reject") {
+        const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
+        
+        if (!registration) {
+          return reply.status(404).send({ message: "Registration not found" });
+        }
+
+        if (registration.status === "approved") {
+          return reply.status(400).send({ message: "Cannot reject an already approved student." });
+        }
+
+        if (registration.status === "rejected") {
+          return reply.status(400).send({ message: "Student is already rejected" });
+        }
+
         await db.collection("registrations").updateOne(
           { _id: new ObjectId(id) },
           { $set: { status: "rejected", rejectedAt: new Date() } }
         );
-        return { message: "Student rejected" };
+        
+        return reply.send({ message: "Student rejected", status: "rejected" });
       }
 
       return reply.status(400).send({ message: "Invalid action" });

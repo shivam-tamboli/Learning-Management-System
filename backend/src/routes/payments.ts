@@ -3,66 +3,86 @@ import { getDB } from "../db/index.js";
 import { ObjectId } from "mongodb";
 
 export async function paymentRoutes(fastify: FastifyInstance) {
-  fastify.get<{ Querystring: { studentId: string } }>(
+  fastify.get<{ Querystring: { studentId?: string } }>(
     "/",
-    { preHandler: [fastify.authenticate as any] },
+    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
     async (request, reply) => {
       const { studentId } = request.query;
       const db = getDB();
       
-      const payments = await db.collection("payments").find({ studentId }).toArray();
+      const query = studentId ? { studentId } : {};
+      const payments = await db.collection("payments").find(query).toArray();
       return payments;
     }
   );
 
-  fastify.post<{ Body: { studentId: string; amount: number } }>(
-    "/init",
+  fastify.post<{ Body: { studentId: string; amount: number; status?: string } }>(
+    "/",
     { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
-    async (request, reply) => {
-      const { studentId, amount } = request.body;
+    async (request: any, reply) => {
+      const { studentId, amount, status = "pending" } = request.body;
       const db = getDB();
+
+      if (!ObjectId.isValid(studentId)) {
+        return reply.status(400).send({ message: "Invalid student ID" });
+      }
 
       const result = await db.collection("payments").insertOne({
         studentId,
         amount,
-        status: "pending",
-        createdAt: new Date()
+        status,
+        createdAt: new Date(),
+        recordedBy: request.user?.id
       });
 
-      const Razorpay = (await import("razorpay")).default;
-      const razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID || "",
-        key_secret: process.env.RAZORPAY_KEY_SECRET || ""
+      return reply.send({
+        id: result.insertedId.toString(),
+        studentId,
+        amount,
+        status,
+        message: "Payment recorded successfully"
       });
-
-      const order = await razorpay.orders.create({
-        amount: amount * 100,
-        currency: "INR",
-        receipt: `rcpt_${result.insertedId}`
-      });
-
-      await db.collection("payments").updateOne(
-        { _id: result.insertedId },
-        { $set: { razorpayOrderId: order.id } }
-      );
-
-      return { orderId: order.id, amount, paymentId: result.insertedId.toString() };
     }
   );
 
-  fastify.post<{ Body: { paymentId: string; razorpayPaymentId: string; razorpaySignature: string } }>(
-    "/verify",
+  fastify.put<{ Params: { id: string }; Body: { status: string } }>(
+    "/:id",
     { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
     async (request, reply) => {
-      const { paymentId, razorpayPaymentId, razorpaySignature } = request.body;
+      const { id } = request.params;
+      const { status } = request.body;
       const db = getDB();
 
+      if (!ObjectId.isValid(id)) {
+        return reply.status(400).send({ message: "Invalid payment ID" });
+      }
+
+      if (!["pending", "completed"].includes(status)) {
+        return reply.status(400).send({ message: "Invalid status. Must be 'pending' or 'completed'" });
+      }
+
       await db.collection("payments").updateOne(
-        { _id: new ObjectId(paymentId) },
-        { $set: { razorpayPaymentId, razorpaySignature, status: "completed", verifiedAt: new Date() } }
+        { _id: new ObjectId(id) },
+        { $set: { status, updatedAt: new Date() } }
       );
 
-      return { message: "Payment verified successfully" };
+      return { message: "Payment status updated", status };
+    }
+  );
+
+  fastify.get<{ Params: { studentId: string } }>(
+    "/student/:studentId",
+    { preHandler: [fastify.authenticate as any] },
+    async (request: any, reply) => {
+      const { studentId } = request.params;
+      const db = getDB();
+
+      if (!ObjectId.isValid(studentId)) {
+        return reply.status(400).send({ message: "Invalid student ID" });
+      }
+
+      const payments = await db.collection("payments").find({ studentId }).toArray();
+      return payments;
     }
   );
 }

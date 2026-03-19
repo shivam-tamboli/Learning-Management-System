@@ -5,10 +5,94 @@ import Link from "next/link";
 import { registrationService } from "@/lib/api";
 import styles from "./students.module.css";
 
+interface PaymentUpdateModalProps {
+  registration: any;
+  onClose: () => void;
+  onUpdate: () => void;
+}
+
+function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateModalProps) {
+  const [amount, setAmount] = useState(registration.payment?.amount?.toString() || "");
+  const [status, setStatus] = useState<"pending" | "completed">(registration.payment?.status || "pending");
+  const [reference, setReference] = useState(registration.payment?.reference || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      await registrationService.updatePayment(registration._id, {
+        amount: parseFloat(amount) || 0,
+        status,
+        reference,
+      });
+      onUpdate();
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to update payment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modal}>
+        <div className={styles.modalHeader}>
+          <h3>Update Payment</h3>
+          <button onClick={onClose} className={styles.modalClose}>&times;</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          {error && <div className={styles.errorMessage}>{error}</div>}
+          <div className={styles.formGroup}>
+            <label>Amount (INR)</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Enter amount"
+              required
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label>Payment Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as "pending" | "completed")}>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div className={styles.formGroup}>
+            <label>Reference / Transaction ID</label>
+            <input
+              type="text"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Transaction ID, Receipt No."
+            />
+          </div>
+          <div className={styles.modalActions}>
+            <button type="button" onClick={onClose} className={styles.cancelBtn}>Cancel</button>
+            <button type="submit" disabled={loading} className={styles.submitBtn}>
+              {loading ? "Updating..." : "Update Payment"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function StudentListPage() {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [paymentUpdateReg, setPaymentUpdateReg] = useState<any | null>(null);
 
   useEffect(() => {
     loadRegistrations();
@@ -16,21 +100,37 @@ export default function StudentListPage() {
 
   const loadRegistrations = async () => {
     try {
+      setError(null);
       const res = await registrationService.getAll();
       setRegistrations(res.data);
-    } catch (error) {
-      console.error("Failed to load registrations:", error);
+    } catch (err: any) {
+      console.error("Failed to load registrations:", err);
+      setError(err.response?.data?.message || "Failed to load registrations");
     } finally {
       setLoading(false);
     }
   };
 
   const handleStatusUpdate = async (id: string, action: "approve" | "reject") => {
+    if (!confirm(`Are you sure you want to ${action} this student?`)) {
+      return;
+    }
+
+    setProcessingId(id);
+    setError(null);
+    setSuccessMessage(null);
+
     try {
-      await registrationService.updateStatus(id, action);
-      loadRegistrations();
-    } catch (error) {
-      console.error("Failed to update status:", error);
+      const res = await registrationService.updateStatus(id, action);
+      setSuccessMessage(res.data.message);
+      await loadRegistrations();
+      
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err: any) {
+      console.error("Failed to update status:", err);
+      setError(err.response?.data?.message || `Failed to ${action} student`);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -48,6 +148,10 @@ export default function StudentListPage() {
     return badges[status] || "";
   };
 
+  const hasPayment = (reg: any) => {
+    return reg.payment && reg.payment.amount !== undefined;
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -59,6 +163,20 @@ export default function StudentListPage() {
           + Add New Student
         </Link>
       </div>
+
+      {error && (
+        <div className={styles.errorBanner}>
+          {error}
+          <button onClick={() => setError(null)} className={styles.errorClose}>&times;</button>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className={styles.successBanner}>
+          {successMessage}
+          <button onClick={() => setSuccessMessage(null)} className={styles.successClose}>&times;</button>
+        </div>
+      )}
 
       <div className={styles.filters}>
         <button
@@ -88,7 +206,7 @@ export default function StudentListPage() {
       </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <p className={styles.loadingText}>Loading...</p>
       ) : filteredRegistrations.length === 0 ? (
         <div className={styles.empty}>
           <p>No registrations found.</p>
@@ -120,6 +238,26 @@ export default function StudentListPage() {
                 <div className={styles.info}>
                   <span>Courses:</span> {reg.courseIds?.length || 0}
                 </div>
+                <div className={styles.info}>
+                  <span>Payment:</span>
+                  {hasPayment(reg) ? (
+                    <strong className={reg.payment.status === "completed" ? styles.textGreen : styles.textYellow}>
+                      {reg.payment.status === "completed" 
+                        ? `✓ ₹${reg.payment.amount || 0}` 
+                        : "○ Pending"}
+                    </strong>
+                  ) : (
+                    <span className={styles.textRed}>⚠ No payment data</span>
+                  )}
+                  {reg.status === "pending" && (
+                    <button 
+                      onClick={() => setPaymentUpdateReg(reg)}
+                      className={styles.updatePaymentBtn}
+                    >
+                      Update
+                    </button>
+                  )}
+                </div>
               </div>
 
               {reg.status === "pending" && (
@@ -127,28 +265,41 @@ export default function StudentListPage() {
                   <button
                     className={styles.approveBtn}
                     onClick={() => handleStatusUpdate(reg._id, "approve")}
+                    disabled={processingId === reg._id}
                   >
-                    Approve
+                    {processingId === reg._id ? "Processing..." : "Approve"}
                   </button>
                   <button
                     className={styles.rejectBtn}
                     onClick={() => handleStatusUpdate(reg._id, "reject")}
+                    disabled={processingId === reg._id}
                   >
-                    Reject
+                    {processingId === reg._id ? "Processing..." : "Reject"}
                   </button>
                 </div>
               )}
 
-              {reg.credentials && (
+              {reg.status !== "pending" && reg.credentials && (
                 <div className={styles.credentials}>
-                  <strong>Generated Credentials:</strong>
-                  <p>Email: {reg.credentials.email}</p>
-                  <p>Password: {reg.credentials.password}</p>
+                  <strong>Credentials:</strong>
+                  <p><span>Email:</span> {reg.credentials.email}</p>
+                  <p><span>Password:</span> {reg.credentials.password}</p>
                 </div>
               )}
             </div>
           ))}
         </div>
+      )}
+
+      {paymentUpdateReg && (
+        <PaymentUpdateModal
+          registration={paymentUpdateReg}
+          onClose={() => setPaymentUpdateReg(null)}
+          onUpdate={() => {
+            setPaymentUpdateReg(null);
+            loadRegistrations();
+          }}
+        />
       )}
     </div>
   );

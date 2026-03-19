@@ -87,15 +87,21 @@ export const registrationService = {
   saveStep: (data: any) => api.post("/registration/step", data),
   updateStudent: (id: string, studentId: string) =>
     api.put(`/registration/${id}/student`, { studentId }),
+  updatePayment: (id: string, payment: { amount: number; status: string; reference?: string }) =>
+    api.put(`/registration/${id}/payment`, { payment }),
   updateStatus: (id: string, action: "approve" | "reject") =>
     api.post(`/registration/${id}/status`, { action }),
 };
 
 export const paymentService = {
-  init: (data: { studentId: string; amount: number }) =>
-    api.post("/payment/init", data),
-  verify: (data: { paymentId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
-    api.post("/payment/verify", data),
+  getAll: (studentId?: string) =>
+    api.get(`/payment${studentId ? `?studentId=${studentId}` : ""}`),
+  create: (data: { studentId: string; amount: number; status?: string }) =>
+    api.post("/payment", data),
+  update: (id: string, status: string) =>
+    api.put(`/payment/${id}`, { status }),
+  getByStudent: (studentId: string) =>
+    api.get(`/payment/student/${studentId}`),
 };
 
 export const progressService = {
@@ -104,4 +110,29 @@ export const progressService = {
     api.post("/progress/complete", data),
   getAll: (studentId?: string) =>
     api.get(`/progress${studentId ? `?studentId=${studentId}` : ""}`),
+};
+
+const getAuthHeader = () => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+  return {};
+};
+
+export const documentService = {
+  getByStudent: (studentId: string) => api.get(`/documents?studentId=${studentId}`),
+  upload: (formData: FormData) => {
+    const headers: Record<string, string> = {};
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/documents`, {
+      method: "POST",
+      headers,
+      body: formData,
+    }).then((res) => res.json());
+  },
+  delete: (id: string) => api.delete(`/documents/${id}`),
 };

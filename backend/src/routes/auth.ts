@@ -26,7 +26,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         approved: user.approved
       });
 
-      return {
+      return reply.send({
         token,
         user: {
           id: user._id.toString(),
@@ -35,7 +35,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           role: user.role,
           approved: user.approved
         }
-      };
+      });
     }
   );
 
