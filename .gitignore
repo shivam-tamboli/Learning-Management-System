@@ -1,0 +1,31 @@
+# =========================
+# Backend
+# =========================
+backend/node_modules/
+backend/.env
+backend/target/
+backend/dist/
+backend/build/
+
+# =========================
+# Frontend
+# =========================
+frontend/node_modules/
+frontend/.next/
+frontend/.env
+
+# =========================
+# Project Files (personal/docs)
+# =========================
+task.md
+agent.md
+product.md
+architecture.md
+.obsidian/
+
+# =========================
+# Common
+# =========================
+.env
+*.log
+.DS_Store
