@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 export async function paymentRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { studentId: string } }>(
     "/",
+    { preHandler: [fastify.authenticate as any] },
     async (request, reply) => {
       const { studentId } = request.query;
       const db = getDB();

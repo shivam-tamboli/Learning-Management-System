@@ -1,0 +1,362 @@
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.backLink {
+  color: #667eea;
+  font-size: 0.875rem;
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  color: #1a1a2e;
+  margin-bottom: 0.25rem;
+}
+
+.header p {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+}
+
+.stepIndicator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e5e7eb;
+}
+
+.step.active:not(:last-child)::after {
+  background: #667eea;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s;
+}
+
+.step.active .stepNumber {
+  background: #667eea;
+  color: white;
+}
+
+.step.current .stepNumber {
+  background: #764ba2;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+}
+
+.stepLabel {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.step.active .stepLabel {
+  color: #667eea;
+}
+
+.formContainer {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.formStep h2 {
+  font-size: 1.5rem;
+  color: #1a1a2e;
+  margin-bottom: 1.5rem;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  margin-top: -1rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.field textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.backBtn {
+  padding: 0.875rem 1.5rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  color: #333;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.backBtn:hover {
+  background: #eee;
+}
+
+.nextBtn {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.nextBtn:hover {
+  opacity: 0.9;
+}
+
+.submitBtn {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancelBtn {
+  padding: 0.875rem 1.5rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  color: #666;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cancelBtn:hover {
+  background: #eee;
+}
+
+.courseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.courseCard {
+  background: #f9f9f9;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  gap: 1rem;
+}
+
+.courseCard:hover {
+  background: #f0f0f0;
+}
+
+.courseCard.selected {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.checkbox {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.courseCard.selected .checkbox {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.courseInfo h4 {
+  font-size: 1rem;
+  color: #1a1a2e;
+  margin-bottom: 0.25rem;
+}
+
+.courseInfo p {
+  font-size: 0.75rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.noCourses {
+  text-align: center;
+  padding: 2rem;
+  background: #f9f9f9;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.noCourses p {
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.manageLink {
+  color: #667eea;
+  font-size: 0.875rem;
+}
+
+.summary {
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summary h3 {
+  font-size: 1rem;
+  color: #1a1a2e;
+  margin-bottom: 1rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summaryItem span {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.summaryItem strong {
+  font-size: 0.875rem;
+  color: #1a1a2e;
+}
+
+@media (max-width: 768px) {
+  .stepIndicator {
+    overflow-x: auto;
+    padding: 0;
+  }
+
+  .stepLabel {
+    display: none;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

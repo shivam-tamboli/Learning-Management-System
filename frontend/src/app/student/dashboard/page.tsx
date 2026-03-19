@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { registrationService, progressService, courseService } from "@/lib/api";
+import { progressService, courseService } from "@/lib/api";
 import styles from "./dashboard.module.css";
 
 interface CourseWithProgress {
@@ -25,39 +25,35 @@ export default function StudentDashboard() {
 
   const loadCourses = async () => {
     try {
-      const registrationRes = await registrationService.getAll();
-      const userRegistrations = registrationRes.data.filter(
-        (reg: any) => reg.studentId === user?.id || reg.userId === user?.id
-      );
+      const coursesRes = await courseService.getEnrolled();
+      const enrolledCourses = coursesRes.data;
 
       const coursesWithProgress: CourseWithProgress[] = [];
 
-      for (const reg of userRegistrations) {
-        for (const courseId of reg.courseIds || []) {
-          try {
-            const courseRes = await courseService.getById(courseId);
-            const progressRes = await progressService.getByCourse(courseId);
-            
-            const totalVideos = courseRes.data.modules?.reduce(
-              (acc: number, mod: any) => acc + (mod.videos?.length || 0),
-              0
-            ) || 0;
-            
-            const completedVideos = progressRes.data.filter(
-              (p: any) => p.isCompleted
-            ).length;
-            
-            coursesWithProgress.push({
-              _id: courseRes.data._id,
-              title: courseRes.data.title,
-              description: courseRes.data.description,
-              progress: totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0,
-              totalVideos,
-              completedVideos,
-            });
-          } catch (e) {
-            console.error("Failed to load course:", e);
-          }
+      for (const course of enrolledCourses) {
+        try {
+          const courseDetailRes = await courseService.getById(course._id);
+          const progressRes = await progressService.getByCourse(course._id);
+          
+          const totalVideos = courseDetailRes.data.modules?.reduce(
+            (acc: number, mod: any) => acc + (mod.videos?.length || 0),
+            0
+          ) || 0;
+          
+          const completedVideos = progressRes.data.filter(
+            (p: any) => p.isCompleted
+          ).length;
+          
+          coursesWithProgress.push({
+            _id: course._id,
+            title: course.title,
+            description: course.description,
+            progress: totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0,
+            totalVideos,
+            completedVideos,
+          });
+        } catch (e) {
+          console.error("Failed to load course details:", e);
         }
       }
 

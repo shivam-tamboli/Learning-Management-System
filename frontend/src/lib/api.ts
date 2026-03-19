@@ -44,12 +44,17 @@ export const authService = {
 export const userService = {
   getCurrentUser: () => api.get("/users/me"),
   getAllUsers: () => api.get("/users"),
+  create: (data: { name: string; email: string; password: string; role?: string; approved?: boolean }) =>
+    api.post("/users", data),
+  update: (id: string, data: { name?: string; email?: string; role?: string; approved?: boolean }) =>
+    api.put(`/users/${id}`, data),
   approveUser: (id: string, approved: boolean) =>
     api.put(`/users/${id}/approve`, { approved }),
 };
 
 export const courseService = {
   getAll: () => api.get("/courses"),
+  getEnrolled: () => api.get("/courses/enrolled"),
   getById: (id: string) => api.get(`/courses/${id}`),
   create: (data: { title: string; description: string }) =>
     api.post("/courses", data),
@@ -80,6 +85,8 @@ export const registrationService = {
   getAll: () => api.get("/registration"),
   getById: (id: string) => api.get(`/registration/${id}`),
   saveStep: (data: any) => api.post("/registration/step", data),
+  updateStudent: (id: string, studentId: string) =>
+    api.put(`/registration/${id}/student`, { studentId }),
   updateStatus: (id: string, action: "approve" | "reject") =>
     api.post(`/registration/${id}/status`, { action }),
 };

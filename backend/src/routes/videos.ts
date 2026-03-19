@@ -2,9 +2,19 @@ import { FastifyInstance } from "fastify";
 import { getDB } from "../db/index.js";
 import { ObjectId } from "mongodb";
 
+function isValidObjectId(id: string): boolean {
+  try {
+    new ObjectId(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function videoRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { moduleId: string } }>(
     "/",
+    { preHandler: [fastify.authenticate as any] },
     async (request, reply) => {
       const { moduleId } = request.query;
       const db = getDB();
@@ -32,6 +42,10 @@ export async function videoRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
       const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid video ID" });
+      }
 
       await db.collection("videos").deleteOne({ _id: new ObjectId(id) });
       return { message: "Video deleted" };

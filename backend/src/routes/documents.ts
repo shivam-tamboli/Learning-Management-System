@@ -7,6 +7,7 @@ import path from "path";
 export async function documentRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { studentId: string } }>(
     "/",
+    { preHandler: [fastify.authenticate as any] },
     async (request, reply) => {
       const { studentId } = request.query;
       const db = getDB();

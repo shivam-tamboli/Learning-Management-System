@@ -2,9 +2,19 @@ import { FastifyInstance } from "fastify";
 import { getDB } from "../db/index.js";
 import { ObjectId } from "mongodb";
 
+function isValidObjectId(id: string): boolean {
+  try {
+    new ObjectId(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function moduleRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { courseId: string } }>(
     "/",
+    { preHandler: [fastify.authenticate as any] },
     async (request, reply) => {
       const { courseId } = request.query;
       const db = getDB();
@@ -32,6 +42,10 @@ export async function moduleRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
       const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid module ID" });
+      }
 
       await db.collection("modules").deleteOne({ _id: new ObjectId(id) });
       return { message: "Module deleted" };
