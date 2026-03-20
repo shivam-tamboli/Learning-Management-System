@@ -12,8 +12,11 @@ import {
   LogOut,
   Menu,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useState } from "react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 interface NavItem {
   label: string;
@@ -44,6 +47,7 @@ function SidebarContent({ isAdmin, onNavClick }: SidebarContentProps) {
   const pathname = usePathname();
   const router = useRouter();
   const navItems = isAdmin ? adminNavItems : studentNavItems;
+  const { resolvedTheme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -88,7 +92,18 @@ function SidebarContent({ isAdmin, onNavClick }: SidebarContentProps) {
         ))}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-3 space-y-1">
+        <button
+          onClick={toggleTheme}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          {resolvedTheme === "dark" ? (
+            <Sun className="size-5 shrink-0" />
+          ) : (
+            <Moon className="size-5 shrink-0" />
+          )}
+          <span>{resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+        </button>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"

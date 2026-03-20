@@ -32,6 +32,42 @@
   --blue-50: #eff6ff;
   --blue-200: #bfdbfe;
   --amber-600: #d97706;
+  --amber-100: #fef3c7;
+  --amber-50: #fffbeb;
+}
+
+.dark {
+  --radius: 0.625rem;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --primary: #818cf8;
+  --primary-foreground: #ffffff;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #818cf8;
+  --emerald-50: #ecfdf5;
+  --emerald-100: #d1fae5;
+  --emerald-200: #a7f3d0;
+  --emerald-600: #10b981;
+  --red-50: #fef2f2;
+  --red-200: #fecaca;
+  --blue-50: #eff6ff;
+  --blue-200: #bfdbfe;
+  --amber-600: #f59e0b;
+  --amber-100: #fef3c7;
+  --amber-50: #fffbeb;
 }
 
 @layer base {
@@ -105,4 +141,10 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
 }

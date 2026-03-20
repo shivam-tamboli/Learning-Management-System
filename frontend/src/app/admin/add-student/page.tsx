@@ -752,7 +752,7 @@ export default function AddStudentPage() {
               </div>
               <label className={`cursor-pointer rounded-lg border px-4 py-2 text-center text-sm font-medium transition-all ${
                 documents[doc.key as keyof typeof documents]
-                  ? "border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50"
+                  ? "border-emerald-200 bg-card text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
                   : "border-dashed border-input bg-background text-foreground hover:bg-accent"
               }`}>
                 <input
