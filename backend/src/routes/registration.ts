@@ -162,6 +162,80 @@ export async function registrationRoutes(fastify: FastifyInstance) {
     }
   );
 
+  fastify.put<{ Params: { id: string }; Body: { basicDetails?: any; address?: any; contact?: any; education?: any; health?: any; payment?: any; courseIds?: string[] } }>(
+    "/:id",
+    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const { basicDetails, address, contact, education, health, payment, courseIds } = request.body;
+      const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid registration ID" });
+      }
+
+      const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
+      if (!registration) {
+        return reply.status(404).send({ message: "Registration not found" });
+      }
+
+      if (registration.status === "approved") {
+        return reply.status(400).send({ message: "Cannot update an approved registration" });
+      }
+
+      const updateData: any = {};
+      
+      if (basicDetails) updateData.basicDetails = basicDetails;
+      if (address) updateData.address = address;
+      if (contact) updateData.contact = contact;
+      if (education) updateData.education = education;
+      if (health) updateData.health = health;
+      if (payment) updateData.payment = { ...registration.payment, ...payment };
+      if (courseIds) updateData.courseIds = courseIds;
+
+      updateData.updatedAt = new Date();
+
+      await db.collection("registrations").updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData }
+      );
+
+      return reply.send({ message: "Registration updated successfully" });
+    }
+  );
+
+  fastify.delete<{ Params: { id: string } }>(
+    "/:id",
+    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid registration ID" });
+      }
+
+      const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
+      if (!registration) {
+        return reply.status(404).send({ message: "Registration not found" });
+      }
+
+      if (registration.status === "approved") {
+        return reply.status(400).send({ message: "Cannot delete an approved registration to maintain data integrity" });
+      }
+
+      await db.collection("registrations").deleteOne({ _id: new ObjectId(id) });
+
+      if (registration.userId) {
+        await db.collection("users").deleteOne({ _id: new ObjectId(registration.userId) });
+      }
+
+      await db.collection("documents").deleteMany({ registrationId: id });
+
+      return reply.send({ message: "Registration deleted successfully" });
+    }
+  );
+
   fastify.post<{ Params: { id: string }; Body: { action: string } }>(
     "/:id/status",
     { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },

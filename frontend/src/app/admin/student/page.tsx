@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { registrationService } from "@/lib/api";
 import styles from "./students.module.css";
 
@@ -86,6 +87,7 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
 }
 
 export default function StudentListPage() {
+  const router = useRouter();
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
@@ -132,6 +134,33 @@ export default function StudentListPage() {
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this registration? This action cannot be undone.")) {
+      return;
+    }
+
+    setProcessingId(id);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await registrationService.delete(id);
+      setSuccessMessage("Registration deleted successfully");
+      await loadRegistrations();
+      
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err: any) {
+      console.error("Failed to delete registration:", err);
+      setError(err.response?.data?.message || "Failed to delete registration");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/admin/add-student?edit=${id}`);
   };
 
   const filteredRegistrations = registrations.filter((reg) => {
@@ -276,6 +305,25 @@ export default function StudentListPage() {
                   <strong>Credentials:</strong>
                   <p><span>Email:</span> {reg.credentials.email}</p>
                   <p><span>Password:</span> {reg.credentials.password}</p>
+                </div>
+              )}
+
+              {(reg.status === "pending" || reg.status === "rejected") && (
+                <div className={styles.cardActions}>
+                  <button
+                    className={styles.editBtn}
+                    onClick={() => handleEdit(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={() => handleDelete(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    {processingId === reg._id ? "Deleting..." : "Delete"}
+                  </button>
                 </div>
               )}
             </div>

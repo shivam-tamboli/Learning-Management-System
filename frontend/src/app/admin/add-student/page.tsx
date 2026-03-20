@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registrationService, courseService, documentService } from "@/lib/api";
 import styles from "./register.module.css";
@@ -50,6 +50,10 @@ interface Payment {
 
 export default function AddStudentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEditing = !!editId;
+
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -61,6 +65,7 @@ export default function AddStudentPage() {
     educationCertificate: null,
   });
   const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
+  const [registrationId, setRegistrationId] = useState<string | null>(null);
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
     firstName: "",
@@ -106,7 +111,40 @@ export default function AddStudentPage() {
 
   useEffect(() => {
     loadCourses();
+    if (isEditing) {
+      loadRegistration(editId);
+    }
   }, []);
+
+  const loadRegistration = async (id: string) => {
+    try {
+      setLoading(true);
+      const res = await registrationService.getById(id);
+      const reg = res.data;
+      setRegistrationId(id);
+
+      if (reg.basicDetails) setBasicDetails(reg.basicDetails);
+      if (reg.address) setAddress(reg.address);
+      if (reg.contact) setContact(reg.contact);
+      if (reg.education) setEducation(reg.education);
+      if (reg.health) setHealth(reg.health);
+      if (reg.payment) {
+        setPayment({
+          amount: reg.payment.amount?.toString() || "",
+          status: reg.payment.status || "pending",
+          reference: reg.payment.reference || "",
+          notes: reg.payment.notes || "",
+        });
+      }
+      if (reg.courseIds) setSelectedCourses(reg.courseIds);
+    } catch (error) {
+      console.error("Failed to load registration:", error);
+      alert("Failed to load registration data");
+      router.push("/admin/student");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadCourses = async () => {
     try {
@@ -220,48 +258,68 @@ export default function AddStudentPage() {
 
     setSubmitting(true);
     try {
-      const registrationRes = await registrationService.saveStep({
-        courseIds: selectedCourses,
-        step: 1,
-        data: basicDetails,
-      });
+      if (isEditing && registrationId) {
+        await registrationService.update(registrationId, {
+          basicDetails,
+          address,
+          contact,
+          education,
+          health,
+          payment: {
+            amount: parseFloat(payment.amount) || 0,
+            status: payment.status,
+            reference: payment.reference,
+            notes: payment.notes,
+          },
+          courseIds: selectedCourses,
+        });
 
-      const registrationId = registrationRes.data.id;
+        alert("Registration updated successfully!");
+        router.push("/admin/student");
+      } else {
+        const registrationRes = await registrationService.saveStep({
+          courseIds: selectedCourses,
+          step: 1,
+          data: basicDetails,
+        });
 
-      await registrationService.saveStep({
-        studentId: registrationId,
-        step: 2,
-        data: address,
-      });
+        const newRegistrationId = registrationRes.data.id;
 
-      await registrationService.saveStep({
-        studentId: registrationId,
-        step: 3,
-        data: contact,
-      });
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 2,
+          data: address,
+        });
 
-      await registrationService.saveStep({
-        studentId: registrationId,
-        step: 4,
-        data: education,
-      });
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 3,
+          data: contact,
+        });
 
-      await registrationService.saveStep({
-        studentId: registrationId,
-        step: 5,
-        data: health,
-      });
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 4,
+          data: education,
+        });
 
-      await registrationService.saveStep({
-        studentId: registrationId,
-        step: 6,
-        data: payment,
-      });
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 5,
+          data: health,
+        });
 
-      await uploadDocuments(registrationId);
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 6,
+          data: payment,
+        });
 
-      alert("Registration submitted successfully!");
-      router.push("/admin/student");
+        await uploadDocuments(newRegistrationId);
+
+        alert("Registration submitted successfully!");
+        router.push("/admin/student");
+      }
     } catch (error: any) {
       console.error("Registration failed:", error);
       alert(error.response?.data?.message || "Registration failed. Please try again.");
@@ -778,7 +836,7 @@ export default function AddStudentPage() {
           className={styles.submitBtn}
           disabled={submitting || selectedCourses.length === 0}
         >
-          {submitting ? "Submitting..." : "Submit Registration"}
+          {submitting ? (isEditing ? "Updating..." : "Submitting...") : (isEditing ? "Update Registration" : "Submit Registration")}
         </button>
       </div>
     </div>
@@ -796,11 +854,11 @@ export default function AddStudentPage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div>
-          <Link href="/admin/dashboard" className={styles.backLink}>
-            ← Back to Dashboard
+          <Link href="/admin/student" className={styles.backLink}>
+            ← Back to Registrations
           </Link>
-          <h1>Student Registration</h1>
-          <p>Fill in the details to register a new student</p>
+          <h1>{isEditing ? "Edit Registration" : "Student Registration"}</h1>
+          <p>{isEditing ? "Update registration details" : "Fill in the details to register a new student"}</p>
         </div>
       </header>
 
