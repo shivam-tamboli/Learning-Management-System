@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { courseService } from "@/lib/api";
-import styles from "./manage.module.css";
+import { courseService, moduleService, videoService } from "@/lib/api";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
+import { LoadingPage } from "@/components/ui/Loading";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { Plus, ChevronDown, ChevronUp, Trash2, BookOpen, X } from "lucide-react";
 
 interface Course {
   _id: string;
@@ -12,6 +19,7 @@ interface Course {
 }
 
 export default function CourseManagePage() {
+  const { success, error: showError } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,6 +42,7 @@ export default function CourseManagePage() {
       setCourses(res.data);
     } catch (error) {
       console.error("Failed to load courses:", error);
+      showError("Failed to load courses");
     } finally {
       setLoading(false);
     }
@@ -44,23 +53,26 @@ export default function CourseManagePage() {
     setCreating(true);
     try {
       await courseService.create(newCourse);
+      success("Course created successfully");
       setNewCourse({ title: "", description: "" });
       setShowCreateModal(false);
       loadCourses();
     } catch (error) {
       console.error("Failed to create course:", error);
+      showError("Failed to create course");
     } finally {
       setCreating(false);
     }
   };
 
   const handleDeleteCourse = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this course?")) return;
     try {
       await courseService.delete(id);
+      success("Course deleted successfully");
       loadCourses();
     } catch (error) {
       console.error("Failed to delete course:", error);
+      showError("Failed to delete course");
     }
   };
 
@@ -75,6 +87,7 @@ export default function CourseManagePage() {
         setCourseDetails(res.data);
       } catch (error) {
         console.error("Failed to load course details:", error);
+        showError("Failed to load course details");
       }
     }
   };
@@ -84,11 +97,13 @@ export default function CourseManagePage() {
     setAddingModule(true);
     try {
       await courseService.createModule(newModule);
+      success("Module added successfully");
       setNewModule({ courseId: newModule.courseId, title: "" });
       const res = await courseService.getById(newModule.courseId);
       setCourseDetails(res.data);
     } catch (error) {
       console.error("Failed to add module:", error);
+      showError("Failed to add module");
     } finally {
       setAddingModule(false);
     }
@@ -99,6 +114,7 @@ export default function CourseManagePage() {
     setAddingVideo(true);
     try {
       await courseService.createVideo(newVideo);
+      success("Video added successfully");
       setNewVideo({ moduleId: newVideo.moduleId, title: "", youtubeUrl: "" });
       if (courseDetails) {
         const res = await courseService.getById(courseDetails._id);
@@ -112,28 +128,30 @@ export default function CourseManagePage() {
   };
 
   const handleDeleteModule = async (moduleId: string) => {
-    if (!confirm("Delete this module and all its videos?")) return;
     try {
-      await courseService.deleteModule(moduleId);
+      await moduleService.delete(moduleId);
+      success("Module deleted successfully");
       if (courseDetails) {
         const res = await courseService.getById(courseDetails._id);
         setCourseDetails(res.data);
       }
     } catch (error) {
       console.error("Failed to delete module:", error);
+      showError("Failed to delete module");
     }
   };
 
   const handleDeleteVideo = async (videoId: string) => {
-    if (!confirm("Delete this video?")) return;
     try {
-      await courseService.deleteVideo(videoId);
+      await videoService.delete(videoId);
+      success("Video deleted successfully");
       if (courseDetails) {
         const res = await courseService.getById(courseDetails._id);
         setCourseDetails(res.data);
       }
     } catch (error) {
       console.error("Failed to delete video:", error);
+      showError("Failed to delete video");
     }
   };
 
@@ -143,80 +161,123 @@ export default function CourseManagePage() {
   };
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1>Course Management</h1>
-          <p>Create courses, add modules and videos</p>
+          <h1 className="text-2xl font-bold text-foreground">Course Management</h1>
+          <p className="text-muted-foreground">Create courses, add modules and videos</p>
         </div>
-        <div className={styles.headerActions}>
-          <Link href="/admin/dashboard" className={styles.backBtn}>
-            ← Back
-          </Link>
-          <button className={styles.createBtn} onClick={() => setShowCreateModal(true)}>
-            + Create Course
-          </button>
+        <div className="flex gap-2">
+          <LinkButton href="/admin/dashboard" variant="outline">
+            Back
+          </LinkButton>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Course
+          </Button>
         </div>
-      </header>
+      </div>
 
       {loading ? (
-        <p className={styles.loading}>Loading courses...</p>
+        <LoadingPage text="Loading courses..." />
       ) : courses.length === 0 ? (
-        <div className={styles.empty}>
-          <p>No courses yet. Create your first course!</p>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="No courses yet"
+          description="Create your first course to get started"
+          action={{
+            label: "Create Course",
+            onClick: () => setShowCreateModal(true),
+          }}
+        />
       ) : (
-        <div className={styles.courseList}>
+        <div className="space-y-4">
           {courses.map((course) => (
-            <div key={course._id} className={styles.courseCard}>
-              <div className={styles.courseMain}>
-                <div className={styles.courseInfo}>
-                  <h3>{course.title}</h3>
-                  <p>{course.description}</p>
+            <Card key={course._id} className="overflow-hidden">
+              <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <BookOpen className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{course.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {course.description || "No description"}
+                    </p>
+                  </div>
                 </div>
-                <div className={styles.courseActions}>
-                  <button
-                    className={styles.expandBtn}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => toggleCourseDetails(course._id)}
                   >
-                    {expandedCourse === course._id ? "Collapse" : "Manage"}
-                  </button>
-                  <button
-                    className={styles.deleteBtn}
+                    {expandedCourse === course._id ? (
+                      <>
+                        <ChevronUp className="mr-1 h-4 w-4" />
+                        Collapse
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="mr-1 h-4 w-4" />
+                        Manage
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     onClick={() => handleDeleteCourse(course._id)}
                   >
+                    <Trash2 className="mr-1 h-4 w-4" />
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {expandedCourse === course._id && courseDetails && (
-                <div className={styles.courseDetails}>
-                  <div className={styles.sectionHeader}>
-                    <h4>Modules</h4>
-                    <form onSubmit={handleAddModule} className={styles.inlineForm}>
+                <div className="border-t border-border bg-muted/30 p-5">
+                  <div className="mb-4">
+                    <h4 className="mb-3 font-semibold text-foreground">Modules</h4>
+                    <form onSubmit={handleAddModule} className="flex gap-2">
                       <input
                         type="text"
                         placeholder="Module title"
                         value={newModule.courseId === course._id ? newModule.title : ""}
                         onChange={(e) => setNewModule({ courseId: course._id, title: e.target.value })}
                         required
+                        className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
                       />
-                      <button type="submit" disabled={addingModule}>
-                        {addingModule ? "..." : "Add"}
-                      </button>
+                      <Button type="submit" size="sm" disabled={addingModule}>
+                        {addingModule ? "..." : "Add Module"}
+                      </Button>
                     </form>
                   </div>
 
                   {courseDetails.modules?.length === 0 ? (
-                    <p className={styles.noItems}>No modules yet</p>
+                    <p className="py-4 text-center text-sm text-muted-foreground">
+                      No modules yet. Add your first module above.
+                    </p>
                   ) : (
-                    courseDetails.modules?.map((mod: any) => (
-                      <div key={mod._id} className={styles.moduleItem}>
-                        <div className={styles.moduleHeader}>
-                          <h5>{mod.title}</h5>
-                          <div className={styles.moduleActions}>
-                            <form onSubmit={handleAddVideo} className={styles.videoForm}>
+                    <div className="space-y-4">
+                      {courseDetails.modules?.map((mod: any) => (
+                        <div key={mod._id} className="rounded-lg border border-border bg-card p-4">
+                          <div className="mb-3 flex items-center justify-between">
+                            <h5 className="font-medium text-foreground">{mod.title}</h5>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteModule(mod._id)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <form onSubmit={handleAddVideo} className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                            <div className="flex-1">
                               <input
                                 type="text"
                                 placeholder="Video title"
@@ -227,7 +288,10 @@ export default function CourseManagePage() {
                                   youtubeUrl: newVideo.moduleId === mod._id ? newVideo.youtubeUrl : "" 
                                 })}
                                 required
+                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               />
+                            </div>
+                            <div className="flex-1">
                               <input
                                 type="url"
                                 placeholder="YouTube URL"
@@ -238,99 +302,94 @@ export default function CourseManagePage() {
                                   youtubeUrl: e.target.value 
                                 })}
                                 required
+                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               />
-                              <button type="submit" disabled={addingVideo}>
-                                {addingVideo ? "..." : "Add Video"}
-                              </button>
-                            </form>
-                            <button
-                              className={styles.deleteSmallBtn}
-                              onClick={() => handleDeleteModule(mod._id)}
-                            >
-                              Delete Module
-                            </button>
-                          </div>
-                        </div>
+                            </div>
+                            <Button type="submit" size="sm" disabled={addingVideo}>
+                              {addingVideo ? "..." : "Add Video"}
+                            </Button>
+                          </form>
 
-                        {mod.videos?.length > 0 && (
-                          <div className={styles.videoList}>
-                            {mod.videos.map((video: any) => {
-                              const ytId = extractYouTubeId(video.youtubeUrl);
-                              return (
-                                <div key={video._id} className={styles.videoItem}>
-                                  <div className={styles.videoPreview}>
+                          {mod.videos?.length > 0 && (
+                            <div className="space-y-2">
+                              {mod.videos.map((video: any) => {
+                                const ytId = extractYouTubeId(video.youtubeUrl);
+                                return (
+                                  <div key={video._id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
                                     {ytId && (
                                       <img
                                         src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
                                         alt={video.title}
-                                        className={styles.thumbnail}
+                                        className="h-12 w-20 rounded object-cover"
                                       />
                                     )}
-                                    <div>
-                                      <p className={styles.videoTitle}>{video.title}</p>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-foreground">{video.title}</p>
                                       <a
                                         href={video.youtubeUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={styles.videoLink}
+                                        className="text-xs text-primary hover:underline"
                                       >
                                         Watch on YouTube
                                       </a>
                                     </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteVideo(video._id)}
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
                                   </div>
-                                  <button
-                                    className={styles.deleteSmallBtn}
-                                    onClick={() => handleDeleteVideo(video._id)}
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    ))
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
       {showCreateModal && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
-            <h2>Create New Course</h2>
-            <form onSubmit={handleCreateCourse}>
-              <div className={styles.field}>
-                <label>Course Title</label>
-                <input
-                  type="text"
-                  value={newCourse.title}
-                  onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
-                  placeholder="e.g., Web Development Fundamentals"
-                  required
-                />
-              </div>
-              <div className={styles.field}>
-                <label>Description</label>
-                <textarea
-                  value={newCourse.description}
-                  onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
-                  placeholder="Brief description of the course"
-                  rows={3}
-                  required
-                />
-              </div>
-              <div className={styles.modalActions}>
-                <button type="button" onClick={() => setShowCreateModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Create New Course</h3>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg p-1 hover:bg-accent">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateCourse} className="space-y-4">
+              <Input
+                label="Course Title"
+                value={newCourse.title}
+                onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+                placeholder="e.g., Web Development Fundamentals"
+                required
+              />
+              <Textarea
+                label="Description"
+                value={newCourse.description}
+                onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                placeholder="Brief description of the course"
+                rows={3}
+                required
+              />
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
                   Cancel
-                </button>
-                <button type="submit" disabled={creating}>
+                </Button>
+                <Button type="submit" disabled={creating} className="flex-1">
                   {creating ? "Creating..." : "Create Course"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

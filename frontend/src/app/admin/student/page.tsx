@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registrationService } from "@/lib/api";
-import styles from "./students.module.css";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Input, Select } from "@/components/ui/Input";
+import { LoadingPage } from "@/components/ui/Loading";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { X, Check, XCircle, Eye, Pencil, Trash2, UserPlus, CreditCard, Users } from "lucide-react";
 
 interface PaymentUpdateModalProps {
   registration: any;
@@ -13,16 +20,15 @@ interface PaymentUpdateModalProps {
 }
 
 function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateModalProps) {
+  const { success, error: showError } = useToast();
   const [amount, setAmount] = useState(registration.payment?.amount?.toString() || "");
   const [status, setStatus] = useState<"pending" | "completed">(registration.payment?.status || "pending");
   const [reference, setReference] = useState(registration.payment?.reference || "");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     try {
       await registrationService.updatePayment(registration._id, {
@@ -30,55 +36,64 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
         status,
         reference,
       });
+      success("Payment updated successfully");
       onUpdate();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to update payment");
+      showError(err.response?.data?.message || "Failed to update payment");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modal}>
-        <div className={styles.modalHeader}>
-          <h3>Update Payment</h3>
-          <button onClick={onClose} className={styles.modalClose}>&times;</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-lg">
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <CreditCard className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Update Payment</h3>
+              <p className="text-sm text-muted-foreground">{registration.basicDetails?.firstName} {registration.basicDetails?.lastName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
-        <form onSubmit={handleSubmit}>
-          {error && <div className={styles.errorMessage}>{error}</div>}
-          <div className={styles.formGroup}>
-            <label>Amount (INR)</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter amount"
-              required
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Payment Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as "pending" | "completed")}>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label>Reference / Transaction ID</label>
-            <input
-              type="text"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="Transaction ID, Receipt No."
-            />
-          </div>
-          <div className={styles.modalActions}>
-            <button type="button" onClick={onClose} className={styles.cancelBtn}>Cancel</button>
-            <button type="submit" disabled={loading} className={styles.submitBtn}>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <Input
+            type="number"
+            label="Amount (INR)"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Enter amount"
+            required
+          />
+          <Select
+            label="Payment Status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as "pending" | "completed")}
+            options={[
+              { value: "pending", label: "Pending" },
+              { value: "completed", label: "Completed" },
+            ]}
+          />
+          <Input
+            label="Reference / Transaction ID"
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder="Transaction ID, Receipt No."
+          />
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? "Updating..." : "Update Payment"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -88,12 +103,11 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
 
 export default function StudentListPage() {
   const router = useRouter();
+  const { success, error: showError, info } = useToast();
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [paymentUpdateReg, setPaymentUpdateReg] = useState<any | null>(null);
 
   useEffect(() => {
@@ -102,58 +116,41 @@ export default function StudentListPage() {
 
   const loadRegistrations = async () => {
     try {
-      setError(null);
       const res = await registrationService.getAll();
       setRegistrations(res.data);
     } catch (err: any) {
       console.error("Failed to load registrations:", err);
-      setError(err.response?.data?.message || "Failed to load registrations");
+      showError(err.response?.data?.message || "Failed to load registrations");
     } finally {
       setLoading(false);
     }
   };
 
   const handleStatusUpdate = async (id: string, action: "approve" | "reject") => {
-    if (!confirm(`Are you sure you want to ${action} this student?`)) {
-      return;
-    }
-
     setProcessingId(id);
-    setError(null);
-    setSuccessMessage(null);
 
     try {
       const res = await registrationService.updateStatus(id, action);
-      setSuccessMessage(res.data.message);
+      success(res.data.message || `Registration ${action}ed successfully`);
       await loadRegistrations();
-      
-      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       console.error("Failed to update status:", err);
-      setError(err.response?.data?.message || `Failed to ${action} student`);
+      showError(err.response?.data?.message || `Failed to ${action} student`);
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this registration? This action cannot be undone.")) {
-      return;
-    }
-
     setProcessingId(id);
-    setError(null);
-    setSuccessMessage(null);
 
     try {
       await registrationService.delete(id);
-      setSuccessMessage("Registration deleted successfully");
+      success("Registration deleted successfully");
       await loadRegistrations();
-      
-      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       console.error("Failed to delete registration:", err);
-      setError(err.response?.data?.message || "Failed to delete registration");
+      showError(err.response?.data?.message || "Failed to delete registration");
     } finally {
       setProcessingId(null);
     }
@@ -176,205 +173,179 @@ export default function StudentListPage() {
     return reg.status === filter;
   });
 
-  const getStatusBadge = (status: string) => {
-    const badges: Record<string, string> = {
-      pending: styles.badgePending,
-      approved: styles.badgeApproved,
-      rejected: styles.badgeRejected,
-    };
-    return badges[status] || "";
-  };
-
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1>Student Registrations</h1>
-          <p>Review and manage student registrations</p>
+          <h1 className="text-2xl font-bold text-foreground">Student Registrations</h1>
+          <p className="text-muted-foreground">Review and manage student registrations</p>
         </div>
-        <Link href="/admin/add-student" className={styles.addBtn}>
-          + Add New Student
-        </Link>
+        <LinkButton href="/admin/add-student">
+          <UserPlus className="mr-2 h-4 w-4" />
+          Add New Student
+        </LinkButton>
       </div>
 
-      {error && (
-        <div className={styles.errorBanner}>
-          {error}
-          <button onClick={() => setError(null)} className={styles.errorClose}>&times;</button>
-        </div>
-      )}
-
-      {successMessage && (
-        <div className={styles.successBanner}>
-          {successMessage}
-          <button onClick={() => setSuccessMessage(null)} className={styles.successClose}>&times;</button>
-        </div>
-      )}
-
-      <div className={styles.filters}>
-        <button
-          className={filter === "all" ? styles.activeFilter : ""}
-          onClick={() => setFilter("all")}
-        >
-          All ({registrations.length})
-        </button>
-        <button
-          className={filter === "pending" ? styles.activeFilter : ""}
-          onClick={() => setFilter("pending")}
-        >
-          Pending ({registrations.filter((r) => r.status === "pending").length})
-        </button>
-        <button
-          className={filter === "approved" ? styles.activeFilter : ""}
-          onClick={() => setFilter("approved")}
-        >
-          Approved ({registrations.filter((r) => r.status === "approved").length})
-        </button>
-        <button
-          className={filter === "rejected" ? styles.activeFilter : ""}
-          onClick={() => setFilter("rejected")}
-        >
-          Rejected ({registrations.filter((r) => r.status === "rejected").length})
-        </button>
+      <div className="flex flex-wrap gap-2">
+        {(["all", "pending", "approved", "rejected"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === f
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)} (
+            {f === "all" 
+              ? registrations.length 
+              : registrations.filter((r) => r.status === f).length})
+          </button>
+        ))}
       </div>
 
       {loading ? (
-        <p className={styles.loadingText}>Loading...</p>
+        <LoadingPage text="Loading registrations..." />
       ) : filteredRegistrations.length === 0 ? (
-        <div className={styles.empty}>
-          <p>No registrations found.</p>
-          <Link href="/admin/add-student">Add a new student</Link>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No registrations found"
+          description={filter === "all" ? "No student registrations yet" : `No ${filter} registrations`}
+          action={filter === "all" ? {
+            label: "Add New Student",
+            onClick: () => router.push("/admin/add-student"),
+          } : undefined}
+        />
       ) : (
-        <div className={styles.list}>
+        <div className="space-y-4">
           {filteredRegistrations.map((reg) => (
-            <div key={reg._id} className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3>
-                    {reg.basicDetails?.firstName} {reg.basicDetails?.lastName}
-                  </h3>
-                  <p>{reg.basicDetails?.email || "Email not provided"}</p>
+            <Card key={reg._id} className="overflow-hidden">
+              <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <span className="text-lg font-semibold text-primary">
+                        {reg.basicDetails?.firstName?.[0] || "?"}
+                        {reg.basicDetails?.lastName?.[0] || ""}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground">
+                          {reg.basicDetails?.firstName} {reg.basicDetails?.lastName}
+                        </h3>
+                        <StatusBadge status={reg.status} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {reg.basicDetails?.email || "Email not provided"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <span className="text-muted-foreground">DOB:</span>{" "}
+                      <span className="text-foreground">{reg.basicDetails?.dob || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Phone:</span>{" "}
+                      <span className="text-foreground">{reg.contact?.phone || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Courses:</span>{" "}
+                      <span className="text-foreground">{reg.courseIds?.length || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Payment:</span>
+                      <span className={reg.payment?.status === "completed" ? "text-emerald-600 font-medium" : "text-amber-600"}>
+                        {reg.payment?.status === "completed" 
+                          ? `✓ ₹${reg.payment?.amount || 0}` 
+                          : "○ Pending"}
+                      </span>
+                      {reg.status === "pending" && (
+                        <button
+                          onClick={() => setPaymentUpdateReg(reg)}
+                          className="rounded bg-secondary px-2 py-0.5 text-xs hover:bg-accent"
+                        >
+                          Update
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <span className={`${styles.badge} ${getStatusBadge(reg.status)}`}>
-                  {reg.status}
-                </span>
-              </div>
-              
-              <div className={styles.cardBody}>
-                <div className={styles.info}>
-                  <span>DOB:</span> {reg.basicDetails?.dob || "N/A"}
-                </div>
-                <div className={styles.info}>
-                  <span>Phone:</span> {reg.contact?.phone || "N/A"}
-                </div>
-                <div className={styles.info}>
-                  <span>Courses:</span> {reg.courseIds?.length || 0}
-                </div>
-                <div className={styles.info}>
-                  <span>Payment:</span>
-                  <strong className={reg.payment?.status === "completed" ? styles.textGreen : styles.textYellow}>
-                    {reg.payment?.status === "completed" 
-                      ? `✓ ₹${reg.payment?.amount || 0}` 
-                      : "○ Pending"}
-                  </strong>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleView(reg._id)}>
+                    <Eye className="mr-1 h-4 w-4" />
+                    View
+                  </Button>
+
                   {reg.status === "pending" && (
-                    <button 
-                      onClick={() => setPaymentUpdateReg(reg)}
-                      className={styles.updatePaymentBtn}
-                    >
-                      Update
-                    </button>
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
+                        <Pencil className="mr-1 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() => handleStatusUpdate(reg._id, "approve")}
+                        disabled={processingId === reg._id}
+                      >
+                        <Check className="mr-1 h-4 w-4" />
+                        Approve
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleStatusUpdate(reg._id, "reject")}
+                        disabled={processingId === reg._id}
+                      >
+                        <XCircle className="mr-1 h-4 w-4" />
+                        Reject
+                      </Button>
+                    </>
+                  )}
+
+                  {reg.status === "rejected" && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
+                        <Pencil className="mr-1 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleDelete(reg._id)}
+                        disabled={processingId === reg._id}
+                      >
+                        <Trash2 className="mr-1 h-4 w-4" />
+                        {processingId === reg._id ? "Deleting..." : "Delete"}
+                      </Button>
+                    </>
+                  )}
+
+                  {reg.status === "approved" && (
+                    <Button variant="outline" size="sm" onClick={() => handleUpdateInfo(reg._id)}>
+                      <Pencil className="mr-1 h-4 w-4" />
+                      Update Info
+                    </Button>
                   )}
                 </div>
               </div>
 
-              {reg.status === "pending" && (
-                <div className={styles.cardActions}>
-                  <button
-                    className={styles.viewBtn}
-                    onClick={() => handleView(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    View
-                  </button>
-                  <button
-                    className={styles.editBtn}
-                    onClick={() => handleEdit(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className={styles.approveBtn}
-                    onClick={() => handleStatusUpdate(reg._id, "approve")}
-                    disabled={processingId === reg._id}
-                  >
-                    {processingId === reg._id ? "Processing..." : "Approve"}
-                  </button>
-                  <button
-                    className={styles.rejectBtn}
-                    onClick={() => handleStatusUpdate(reg._id, "reject")}
-                    disabled={processingId === reg._id}
-                  >
-                    {processingId === reg._id ? "Processing..." : "Reject"}
-                  </button>
-                </div>
-              )}
-
-              {reg.status === "rejected" && (
-                <div className={styles.cardActions}>
-                  <button
-                    className={styles.viewBtn}
-                    onClick={() => handleView(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    View
-                  </button>
-                  <button
-                    className={styles.editBtn}
-                    onClick={() => handleEdit(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className={styles.deleteBtn}
-                    onClick={() => handleDelete(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    {processingId === reg._id ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              )}
-
-              {reg.status === "approved" && (
-                <div className={styles.cardActions}>
-                  <button
-                    className={styles.viewBtn}
-                    onClick={() => handleView(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    View
-                  </button>
-                  <button
-                    className={styles.editBtn}
-                    onClick={() => handleUpdateInfo(reg._id)}
-                    disabled={processingId === reg._id}
-                  >
-                    Update Info
-                  </button>
-                </div>
-              )}
-
               {reg.status === "approved" && reg.credentials && (
-                <div className={styles.credentials}>
-                  <strong>Credentials:</strong>
-                  <p><span>Email:</span> {reg.credentials.email}</p>
-                  <p><span>Password:</span> {reg.credentials.password}</p>
+                <div className="border-t border-border bg-muted/30 px-5 py-3">
+                  <p className="text-xs font-medium text-muted-foreground">Credentials:</p>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Email:</span> {reg.credentials.email}
+                    <span className="mx-2 text-muted-foreground">|</span>
+                    <span className="text-muted-foreground">Password:</span> {reg.credentials.password}
+                  </p>
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}

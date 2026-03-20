@@ -1,20 +1,108 @@
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #1a1a2e;
+  --card: #ffffff;
+  --card-foreground: #1a1a2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a2e;
+  --primary: #667eea;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #1a1a2e;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #f5f5f5;
+  --accent-foreground: #1a1a2e;
+  --destructive: #dc3545;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #667eea;
+  --emerald-50: #ecfdf5;
+  --emerald-100: #d1fae5;
+  --emerald-200: #a7f3d0;
+  --emerald-600: #059669;
+  --red-50: #fef2f2;
+  --red-200: #fecaca;
+  --blue-50: #eff6ff;
+  --blue-200: #bfdbfe;
+  --amber-600: #d97706;
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+@layer utilities {
+  .animate-in {
+    animation-duration: 300ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: forwards;
+  }
+  
+  .slide-in-from-right {
+    animation-name: slideInFromRight;
+  }
+  
+  @keyframes slideInFromRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .fade-in {
+    animation-name: fadeIn;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }

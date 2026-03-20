@@ -4,11 +4,17 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { registrationService, courseService, documentService } from "@/lib/api";
-import styles from "../view.module.css";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { LoadingPage } from "@/components/ui/Loading";
+import { useToast } from "@/components/ui/Toast";
+import { ArrowLeft, User, MapPin, Phone, GraduationCap, Heart, FileText, CreditCard, BookOpen, Clock } from "lucide-react";
 
 export default function ViewRegistrationPage() {
   const params = useParams();
   const router = useRouter();
+  const { error: showError } = useToast();
   const id = params.id as string;
 
   const [registration, setRegistration] = useState<any>(null);
@@ -33,7 +39,7 @@ export default function ViewRegistrationPage() {
       setDocuments(docsRes.data || []);
     } catch (error) {
       console.error("Failed to load registration:", error);
-      alert("Failed to load registration data");
+      showError("Failed to load registration data");
       router.push("/admin/student");
     } finally {
       setLoading(false);
@@ -56,228 +62,298 @@ export default function ViewRegistrationPage() {
 
   if (loading) {
     return (
-      <div className={styles.container}>
-        <p className={styles.loading}>Loading...</p>
+      <div className="flex items-center justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
   if (!registration) {
     return (
-      <div className={styles.container}>
-        <p>Registration not found</p>
-        <Link href="/admin/student" className={styles.backLink}>
-          Back to Registrations
-        </Link>
-      </div>
+      <Card className="py-12">
+        <CardContent className="flex flex-col items-center justify-center text-center">
+          <p className="text-lg font-medium text-muted-foreground">Registration not found</p>
+          <LinkButton href="/admin/student" variant="outline" className="mt-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Registrations
+          </LinkButton>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Link href="/admin/student" className={styles.backLink}>
-            ← Back to Registrations
-          </Link>
-          <h1>Registration Details</h1>
-          <p>
-            {registration.basicDetails?.firstName} {registration.basicDetails?.lastName} -{" "}
-            <span className={`${styles.badge} ${styles[registration.status]}`}>
-              {registration.status}
-            </span>
+          <LinkButton href="/admin/student" variant="ghost" size="sm" className="mb-2 -ml-2">
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back to Registrations
+          </LinkButton>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">
+              Registration Details
+            </h1>
+            <StatusBadge status={registration.status} />
+          </div>
+          <p className="text-muted-foreground">
+            {registration.basicDetails?.firstName} {registration.basicDetails?.lastName}
           </p>
         </div>
       </div>
 
-      <div className={styles.sections}>
-        <div className={styles.section}>
-          <h2>1. Basic Details</h2>
-          <div className={styles.grid}>
-            <div className={styles.field}>
-              <label>Full Name</label>
-              <p>{registration.basicDetails?.firstName} {registration.basicDetails?.lastName}</p>
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <User className="h-5 w-5 text-primary" />
             </div>
-            <div className={styles.field}>
-              <label>Date of Birth</label>
-              <p>{registration.basicDetails?.dob || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Gender</label>
-              <p className={styles.capitalize}>{registration.basicDetails?.gender || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Email</label>
-              <p>{registration.basicDetails?.email || "N/A"}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <h2>2. Address</h2>
-          <div className={styles.grid}>
-            <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
-              <label>Street Address</label>
-              <p>{registration.address?.street || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>City</label>
-              <p>{registration.address?.city || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>State</label>
-              <p>{registration.address?.state || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Pincode</label>
-              <p>{registration.address?.pincode || "N/A"}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <h2>3. Contact</h2>
-          <div className={styles.grid}>
-            <div className={styles.field}>
-              <label>Phone Number</label>
-              <p>{registration.contact?.phone || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Emergency Contact</label>
-              <p>{registration.contact?.emergencyContact || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Emergency Contact Name</label>
-              <p>{registration.contact?.emergencyName || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Relationship</label>
-              <p className={styles.capitalize}>{registration.contact?.relationship || "N/A"}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <h2>4. Education</h2>
-          <div className={styles.grid}>
-            <div className={styles.field}>
-              <label>Highest Qualification</label>
-              <p className={styles.capitalize}>{registration.education?.qualification || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Institution/Board</label>
-              <p>{registration.education?.institution || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Year of Passing</label>
-              <p>{registration.education?.year || "N/A"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Percentage/CGPA</label>
-              <p>{registration.education?.percentage || "N/A"}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <h2>5. Health</h2>
-          <div className={styles.grid}>
-            <div className={styles.field}>
-              <label>Medical Conditions</label>
-              <p>{registration.health?.conditions || "None"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Current Medications</label>
-              <p>{registration.health?.medications || "None"}</p>
-            </div>
-            <div className={styles.field}>
-              <label>Allergies</label>
-              <p>{registration.health?.allergies || "None"}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <h2>6. Documents</h2>
-          {documents.length > 0 ? (
-            <div className={styles.documentsList}>
-              {documents.map((doc) => (
-                <div key={doc._id} className={styles.documentItem}>
-                  <span className={styles.docType}>{getDocTypeLabel(doc.type)}</span>
-                  <span className={styles.docName}>{doc.fileName}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className={styles.noData}>No documents uploaded</p>
-          )}
-        </div>
-
-        <div className={styles.section}>
-          <h2>7. Payment</h2>
-          <div className={styles.grid}>
-            <div className={styles.field}>
-              <label>Amount</label>
-              <p className={styles.amount}>
-                ₹{registration.payment?.amount || 0}
-              </p>
-            </div>
-            <div className={styles.field}>
-              <label>Status</label>
-              <p className={`${styles.status} ${styles[registration.payment?.status || "pending"]}`}>
-                {registration.payment?.status === "completed" ? "✓ Completed" : "○ Pending"}
-              </p>
-            </div>
-            <div className={styles.field}>
-              <label>Reference/Transaction ID</label>
-              <p>{registration.payment?.reference || "N/A"}</p>
-            </div>
-            {registration.payment?.notes && (
-              <div className={styles.field}>
-                <label>Notes</label>
-                <p>{registration.payment.notes}</p>
+            <CardTitle>1. Basic Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Full Name</p>
+                <p className="font-medium">{registration.basicDetails?.firstName} {registration.basicDetails?.lastName}</p>
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <h2>8. Courses</h2>
-          {registration.courseIds && registration.courseIds.length > 0 ? (
-            <div className={styles.coursesList}>
-              {registration.courseIds.map((courseId: string) => (
-                <div key={courseId} className={styles.courseItem}>
-                  {getCourseName(courseId)}
-                </div>
-              ))}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
+                <p>{registration.basicDetails?.dob || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Gender</p>
+                <p className="capitalize">{registration.basicDetails?.gender || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Email</p>
+                <p>{registration.basicDetails?.email || "N/A"}</p>
+              </div>
             </div>
-          ) : (
-            <p className={styles.noData}>No courses selected</p>
-          )}
-        </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <MapPin className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>2. Address</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2 lg:col-span-4">
+                <p className="text-sm font-medium text-muted-foreground">Street Address</p>
+                <p>{registration.address?.street || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">City</p>
+                <p>{registration.address?.city || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">State</p>
+                <p>{registration.address?.state || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pincode</p>
+                <p>{registration.address?.pincode || "N/A"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Phone className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>3. Contact</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Phone Number</p>
+                <p>{registration.contact?.phone || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Emergency Contact</p>
+                <p>{registration.contact?.emergencyContact || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Emergency Contact Name</p>
+                <p>{registration.contact?.emergencyName || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Relationship</p>
+                <p className="capitalize">{registration.contact?.relationship || "N/A"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <GraduationCap className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>4. Education</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Highest Qualification</p>
+                <p className="capitalize">{registration.education?.qualification || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Institution/Board</p>
+                <p>{registration.education?.institution || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Year of Passing</p>
+                <p>{registration.education?.year || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Percentage/CGPA</p>
+                <p>{registration.education?.percentage || "N/A"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Heart className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>5. Health</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Medical Conditions</p>
+                <p>{registration.health?.conditions || "None"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Current Medications</p>
+                <p>{registration.health?.medications || "None"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Allergies</p>
+                <p>{registration.health?.allergies || "None"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>6. Documents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {documents.length > 0 ? (
+              <div className="space-y-2">
+                {documents.map((doc) => (
+                  <div key={doc._id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-medium">{getDocTypeLabel(doc.type)}</p>
+                      <p className="text-sm text-muted-foreground">{doc.fileName}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No documents uploaded</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <CreditCard className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>7. Payment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Amount</p>
+                <p className="text-xl font-bold text-primary">₹{registration.payment?.amount || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <p className={registration.payment?.status === "completed" ? "text-emerald-600 font-medium" : "text-amber-600"}>
+                  {registration.payment?.status === "completed" ? "✓ Completed" : "○ Pending"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Reference/Transaction ID</p>
+                <p>{registration.payment?.reference || "N/A"}</p>
+              </div>
+              {registration.payment?.notes && (
+                <div className="lg:col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                  <p>{registration.payment.notes}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle>8. Courses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {registration.courseIds && registration.courseIds.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {registration.courseIds.map((courseId: string) => (
+                  <div key={courseId} className="rounded-lg bg-primary/10 px-4 py-2">
+                    <span className="font-medium text-primary">{getCourseName(courseId)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No courses selected</p>
+            )}
+          </CardContent>
+        </Card>
 
         {(registration.status === "approved" || registration.status === "rejected") && registration.createdAt && (
-          <div className={styles.section}>
-            <h2>Timeline</h2>
-            <div className={styles.grid}>
-              <div className={styles.field}>
-                <label>Created At</label>
-                <p>{new Date(registration.createdAt).toLocaleString()}</p>
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Clock className="h-5 w-5 text-primary" />
               </div>
-              {registration.approvedAt && (
-                <div className={styles.field}>
-                  <label>Approved At</label>
-                  <p>{new Date(registration.approvedAt).toLocaleString()}</p>
+              <CardTitle>Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Created At</p>
+                  <p>{new Date(registration.createdAt).toLocaleString()}</p>
                 </div>
-              )}
-              {registration.rejectedAt && (
-                <div className={styles.field}>
-                  <label>Rejected At</label>
-                  <p>{new Date(registration.rejectedAt).toLocaleString()}</p>
-                </div>
-              )}
-            </div>
-          </div>
+                {registration.approvedAt && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Approved At</p>
+                    <p>{new Date(registration.approvedAt).toLocaleString()}</p>
+                  </div>
+                )}
+                {registration.rejectedAt && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Rejected At</p>
+                    <p>{new Date(registration.rejectedAt).toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
