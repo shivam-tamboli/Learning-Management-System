@@ -31,6 +31,28 @@ export async function registrationRoutes(fastify: FastifyInstance) {
       const db = getDB();
 
       if (step === 1 && courseIds && courseIds.length > 0) {
+        const email = data?.email?.trim?.();
+        
+        if (email) {
+          const existingRegistration = await db.collection("registrations").findOne({
+            "basicDetails.email": email,
+            status: { $in: ["pending", "approved"] }
+          });
+          
+          if (existingRegistration) {
+            return reply.status(400).send({ 
+              message: `A registration with email ${email} already exists (${existingRegistration.status}). Please use a different email or reject the existing registration first.`
+            });
+          }
+
+          const existingUser = await db.collection("users").findOne({ email });
+          if (existingUser) {
+            return reply.status(400).send({ 
+              message: `A user with email ${email} already exists. Please use a different email.`
+            });
+          }
+        }
+
         const registrationData: any = {
           courseIds,
           status: "pending",
@@ -226,6 +248,11 @@ export async function registrationRoutes(fastify: FastifyInstance) {
             credentials,
             approvedAt: new Date()
           }}
+        );
+
+        await db.collection("documents").updateMany(
+          { registrationId: id },
+          { $set: { studentId: userId } }
         );
 
         return reply.send({ 

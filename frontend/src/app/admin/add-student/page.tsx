@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { registrationService, courseService, userService, documentService } from "@/lib/api";
+import { registrationService, courseService, documentService } from "@/lib/api";
 import styles from "./register.module.css";
 
 interface BasicDetails {
@@ -183,7 +183,7 @@ export default function AddStudentPage() {
     );
   };
 
-  const uploadDocuments = async (studentId: string): Promise<string[]> => {
+  const uploadDocuments = async (registrationId: string): Promise<string[]> => {
     const uploadedIds: string[] = [];
     const docTypes = ["idProof", "addressProof", "educationCertificate"];
     const docNames: Record<string, string> = {
@@ -198,11 +198,11 @@ export default function AddStudentPage() {
         try {
           const formData = new FormData();
           formData.append("file", file);
-          formData.append("studentId", studentId);
+          formData.append("registrationId", registrationId);
           formData.append("type", docNames[type]);
 
           const res = await documentService.upload(formData);
-          uploadedIds.push(res.data.id || res.data._id);
+          uploadedIds.push(res.id || res._id);
         } catch (error) {
           console.error(`Failed to upload ${type}:`, error);
         }
@@ -258,19 +258,7 @@ export default function AddStudentPage() {
         data: payment,
       });
 
-      const userRes = await userService.create({
-        name: `${basicDetails.firstName} ${basicDetails.lastName}`,
-        email: basicDetails.email,
-        password: `temp${Date.now()}`,
-        role: "student",
-        approved: false,
-      });
-
-      const studentId = userRes.data.id;
-
-      await registrationService.updateStudent(registrationId, studentId);
-
-      await uploadDocuments(studentId);
+      await uploadDocuments(registrationId);
 
       alert("Registration submitted successfully!");
       router.push("/admin/student");

@@ -18,14 +18,18 @@ function isValidObjectId(id: string): boolean {
 }
 
 export async function documentRoutes(fastify: FastifyInstance) {
-  fastify.get<{ Querystring: { studentId: string } }>(
+  fastify.get<{ Querystring: { studentId?: string; registrationId?: string } }>(
     "/",
     { preHandler: [fastify.authenticate as any] },
     async (request, reply) => {
-      const { studentId } = request.query;
+      const { studentId, registrationId } = request.query;
       const db = getDB();
       
-      const documents = await db.collection("documents").find({ studentId }).toArray();
+      const query: any = {};
+      if (studentId) query.studentId = studentId;
+      if (registrationId) query.registrationId = registrationId;
+      
+      const documents = await db.collection("documents").find(query).toArray();
       return documents;
     }
   );
@@ -38,6 +42,7 @@ export async function documentRoutes(fastify: FastifyInstance) {
       
       let file: any;
       let studentId = "";
+      let registrationId = "";
       let type = "";
 
       try {
@@ -47,6 +52,7 @@ export async function documentRoutes(fastify: FastifyInstance) {
             file = part;
           } else {
             if (part.fieldname === "studentId") studentId = String(part.value);
+            if (part.fieldname === "registrationId") registrationId = String(part.value);
             if (part.fieldname === "type") type = String(part.value);
           }
         }
@@ -54,8 +60,12 @@ export async function documentRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ message: "Error processing upload" });
       }
 
-      if (!file || !studentId || !type) {
-        return reply.status(400).send({ message: "Missing file, studentId, or type" });
+      if (!file || !type) {
+        return reply.status(400).send({ message: "Missing file or type" });
+      }
+
+      if (!studentId && !registrationId) {
+        return reply.status(400).send({ message: "Missing studentId or registrationId" });
       }
 
       const uploadDir = path.join(process.cwd(), "uploads", "documents");
@@ -72,19 +82,24 @@ export async function documentRoutes(fastify: FastifyInstance) {
         return reply.status(500).send({ message: "Error saving file" });
       }
 
-      const result = await db.collection("documents").insertOne({
-        studentId,
+      const docData: any = {
         type,
         fileName: file.filename,
         filePath: `/uploads/documents/${fileName}`,
         mimeType: file.mimetype,
         size: file.file.bytesRead || 0,
         uploadedAt: new Date()
-      });
+      };
+      
+      if (studentId) docData.studentId = studentId;
+      if (registrationId) docData.registrationId = registrationId;
+
+      const result = await db.collection("documents").insertOne(docData);
 
       return { 
         id: result.insertedId.toString(), 
         studentId, 
+        registrationId,
         type, 
         filePath: `/uploads/documents/${fileName}`,
         fileName: file.filename

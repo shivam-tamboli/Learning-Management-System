@@ -148,10 +148,6 @@ export default function StudentListPage() {
     return badges[status] || "";
   };
 
-  const hasPayment = (reg: any) => {
-    return reg.payment && reg.payment.amount !== undefined;
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -240,15 +236,11 @@ export default function StudentListPage() {
                 </div>
                 <div className={styles.info}>
                   <span>Payment:</span>
-                  {hasPayment(reg) ? (
-                    <strong className={reg.payment.status === "completed" ? styles.textGreen : styles.textYellow}>
-                      {reg.payment.status === "completed" 
-                        ? `✓ ₹${reg.payment.amount || 0}` 
-                        : "○ Pending"}
-                    </strong>
-                  ) : (
-                    <span className={styles.textRed}>⚠ No payment data</span>
-                  )}
+                  <strong className={reg.payment?.status === "completed" ? styles.textGreen : styles.textYellow}>
+                    {reg.payment?.status === "completed" 
+                      ? `✓ ₹${reg.payment?.amount || 0}` 
+                      : "○ Pending"}
+                  </strong>
                   {reg.status === "pending" && (
                     <button 
                       onClick={() => setPaymentUpdateReg(reg)}

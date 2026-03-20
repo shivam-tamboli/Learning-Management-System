@@ -29,3 +29,6 @@ architecture.md
 .env
 *.log
 .DS_Store
+
+# Uploads (DO NOT TRACK)
+backend/uploads/
