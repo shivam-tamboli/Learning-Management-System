@@ -361,4 +361,83 @@ export async function registrationRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ message: "Invalid action" });
     }
   );
+
+  fastify.put<{ Params: { id: string }; Body: { userData?: { name?: string; phone?: string; address?: string } } }>(
+    "/:id/user",
+    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const { userData } = request.body;
+      const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid registration ID" });
+      }
+
+      if (!userData) {
+        return reply.status(400).send({ message: "User data is required" });
+      }
+
+      const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
+      if (!registration) {
+        return reply.status(404).send({ message: "Registration not found" });
+      }
+
+      if (registration.status !== "approved" || !registration.userId) {
+        return reply.status(400).send({ message: "Can only update user profile for approved registrations" });
+      }
+
+      const updateData: any = {};
+      const userUpdateData: any = {};
+      
+      if (userData.name) {
+        const nameParts = userData.name.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        userUpdateData.name = userData.name;
+        
+        updateData.basicDetails = {
+          ...(registration.basicDetails || {}),
+          firstName,
+          lastName
+        };
+      }
+      
+      if (userData.phone) {
+        userUpdateData.phone = userData.phone;
+        updateData.phone = userData.phone;
+        updateData.contact = {
+          ...(registration.contact || {}),
+          phone: userData.phone
+        };
+      }
+      
+      if (userData.address && typeof userData.address === "object") {
+        const existingAddress: any = (registration.address as any) || {};
+        userUpdateData.address = userData.address;
+        updateData.address = Object.assign({}, existingAddress, userData.address);
+      }
+
+      if (Object.keys(updateData).length > 0 || Object.keys(userUpdateData).length > 0) {
+        const setData: any = { ...updateData, updatedAt: new Date() };
+        
+        if (Object.keys(userUpdateData).length > 0) {
+          await db.collection("users").updateOne(
+            { _id: new ObjectId(registration.userId) },
+            { $set: userUpdateData }
+          );
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await db.collection("registrations").updateOne(
+            { _id: new ObjectId(id) },
+            { $set: setData }
+          );
+        }
+      }
+
+      return reply.send({ message: "User profile updated successfully" });
+    }
+  );
 }

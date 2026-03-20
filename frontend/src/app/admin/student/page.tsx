@@ -163,6 +163,14 @@ export default function StudentListPage() {
     router.push(`/admin/add-student?edit=${id}`);
   };
 
+  const handleView = (id: string) => {
+    router.push(`/admin/student/view/${id}`);
+  };
+
+  const handleUpdateInfo = (id: string) => {
+    router.push(`/admin/add-student?edit=${id}&mode=profile`);
+  };
+
   const filteredRegistrations = registrations.filter((reg) => {
     if (filter === "all") return true;
     return reg.status === filter;
@@ -284,6 +292,20 @@ export default function StudentListPage() {
               {reg.status === "pending" && (
                 <div className={styles.cardActions}>
                   <button
+                    className={styles.viewBtn}
+                    onClick={() => handleView(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    View
+                  </button>
+                  <button
+                    className={styles.editBtn}
+                    onClick={() => handleEdit(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    Edit
+                  </button>
+                  <button
                     className={styles.approveBtn}
                     onClick={() => handleStatusUpdate(reg._id, "approve")}
                     disabled={processingId === reg._id}
@@ -300,16 +322,15 @@ export default function StudentListPage() {
                 </div>
               )}
 
-              {reg.status !== "pending" && reg.credentials && (
-                <div className={styles.credentials}>
-                  <strong>Credentials:</strong>
-                  <p><span>Email:</span> {reg.credentials.email}</p>
-                  <p><span>Password:</span> {reg.credentials.password}</p>
-                </div>
-              )}
-
-              {(reg.status === "pending" || reg.status === "rejected") && (
+              {reg.status === "rejected" && (
                 <div className={styles.cardActions}>
+                  <button
+                    className={styles.viewBtn}
+                    onClick={() => handleView(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    View
+                  </button>
                   <button
                     className={styles.editBtn}
                     onClick={() => handleEdit(reg._id)}
@@ -324,6 +345,33 @@ export default function StudentListPage() {
                   >
                     {processingId === reg._id ? "Deleting..." : "Delete"}
                   </button>
+                </div>
+              )}
+
+              {reg.status === "approved" && (
+                <div className={styles.cardActions}>
+                  <button
+                    className={styles.viewBtn}
+                    onClick={() => handleView(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    View
+                  </button>
+                  <button
+                    className={styles.editBtn}
+                    onClick={() => handleUpdateInfo(reg._id)}
+                    disabled={processingId === reg._id}
+                  >
+                    Update Info
+                  </button>
+                </div>
+              )}
+
+              {reg.status === "approved" && reg.credentials && (
+                <div className={styles.credentials}>
+                  <strong>Credentials:</strong>
+                  <p><span>Email:</span> {reg.credentials.email}</p>
+                  <p><span>Password:</span> {reg.credentials.password}</p>
                 </div>
               )}
             </div>

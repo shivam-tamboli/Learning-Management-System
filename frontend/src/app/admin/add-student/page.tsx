@@ -52,7 +52,9 @@ export default function AddStudentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const mode = searchParams.get("mode");
   const isEditing = !!editId;
+  const isProfileMode = mode === "profile";
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -66,6 +68,7 @@ export default function AddStudentPage() {
   });
   const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
+  const [registrationStatus, setRegistrationStatus] = useState<string>("");
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
     firstName: "",
@@ -122,6 +125,7 @@ export default function AddStudentPage() {
       const res = await registrationService.getById(id);
       const reg = res.data;
       setRegistrationId(id);
+      setRegistrationStatus(reg.status);
 
       if (reg.basicDetails) setBasicDetails(reg.basicDetails);
       if (reg.address) setAddress(reg.address);
@@ -251,6 +255,26 @@ export default function AddStudentPage() {
   };
 
   const handleSubmit = async () => {
+    if (isProfileMode && registrationId) {
+      setSubmitting(true);
+      try {
+        await registrationService.updateUser(registrationId, {
+          name: `${basicDetails.firstName} ${basicDetails.lastName}`.trim(),
+          phone: contact.phone,
+          address,
+        });
+
+        alert("Profile updated successfully!");
+        router.push("/admin/student");
+      } catch (error: any) {
+        console.error("Profile update failed:", error);
+        alert(error.response?.data?.message || "Profile update failed. Please try again.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (selectedCourses.length === 0) {
       alert("Please select at least one course");
       return;
@@ -834,9 +858,11 @@ export default function AddStudentPage() {
           type="button"
           onClick={handleSubmit}
           className={styles.submitBtn}
-          disabled={submitting || selectedCourses.length === 0}
+          disabled={submitting || (isProfileMode ? false : selectedCourses.length === 0)}
         >
-          {submitting ? (isEditing ? "Updating..." : "Submitting...") : (isEditing ? "Update Registration" : "Submit Registration")}
+          {submitting 
+            ? (isProfileMode ? "Updating..." : isEditing ? "Updating..." : "Submitting...") 
+            : (isProfileMode ? "Update Profile" : isEditing ? "Update Registration" : "Submit Registration")}
         </button>
       </div>
     </div>
@@ -857,23 +883,112 @@ export default function AddStudentPage() {
           <Link href="/admin/student" className={styles.backLink}>
             ← Back to Registrations
           </Link>
-          <h1>{isEditing ? "Edit Registration" : "Student Registration"}</h1>
-          <p>{isEditing ? "Update registration details" : "Fill in the details to register a new student"}</p>
+          <h1>{isProfileMode ? "Update Profile" : isEditing ? "Edit Registration" : "Student Registration"}</h1>
+          <p>{isProfileMode ? "Update student profile information" : isEditing ? "Update registration details" : "Fill in the details to register a new student"}</p>
         </div>
       </header>
 
-      {renderStepIndicator()}
+      {isProfileMode ? (
+        <div className={styles.formStep}>
+          <h2>Update Profile Information</h2>
+          <p className={styles.subtitle}>Update student details for approved registration</p>
+          <div className={styles.formGrid}>
+            <div className={styles.field}>
+              <label>First Name *</label>
+              <input
+                type="text"
+                value={basicDetails.firstName}
+                onChange={(e) => setBasicDetails({ ...basicDetails, firstName: e.target.value })}
+                placeholder="Enter first name"
+              />
+            </div>
+            <div className={styles.field}>
+              <label>Last Name *</label>
+              <input
+                type="text"
+                value={basicDetails.lastName}
+                onChange={(e) => setBasicDetails({ ...basicDetails, lastName: e.target.value })}
+                placeholder="Enter last name"
+              />
+            </div>
+            <div className={styles.field}>
+              <label>Phone Number</label>
+              <input
+                type="tel"
+                value={contact.phone}
+                onChange={(e) => setContact({ ...contact, phone: e.target.value })}
+                placeholder="10-digit phone number"
+                maxLength={10}
+              />
+            </div>
+            <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
+              <label>Street Address</label>
+              <input
+                type="text"
+                value={address.street}
+                onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                placeholder="House No., Street Name, Area"
+              />
+            </div>
+            <div className={styles.field}>
+              <label>City</label>
+              <input
+                type="text"
+                value={address.city}
+                onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                placeholder="City"
+              />
+            </div>
+            <div className={styles.field}>
+              <label>State</label>
+              <input
+                type="text"
+                value={address.state}
+                onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                placeholder="State"
+              />
+            </div>
+            <div className={styles.field}>
+              <label>Pincode</label>
+              <input
+                type="text"
+                value={address.pincode}
+                onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
+                placeholder="6-digit pincode"
+                maxLength={6}
+              />
+            </div>
+          </div>
+          <div className={styles.actions}>
+            <Link href="/admin/student" className={styles.cancelBtn}>
+              Cancel
+            </Link>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className={styles.submitBtn}
+              disabled={submitting}
+            >
+              {submitting ? "Updating..." : "Update Profile"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {renderStepIndicator()}
 
-      <div className={styles.formContainer}>
-        {currentStep === 1 && renderStep1()}
-        {currentStep === 2 && renderStep2()}
-        {currentStep === 3 && renderStep3()}
-        {currentStep === 4 && renderStep4()}
-        {currentStep === 5 && renderStep5()}
-        {currentStep === 6 && renderStep6()}
-        {currentStep === 7 && renderStep7()}
-        {currentStep === 8 && renderStep8()}
-      </div>
+          <div className={styles.formContainer}>
+            {currentStep === 1 && renderStep1()}
+            {currentStep === 2 && renderStep2()}
+            {currentStep === 3 && renderStep3()}
+            {currentStep === 4 && renderStep4()}
+            {currentStep === 5 && renderStep5()}
+            {currentStep === 6 && renderStep6()}
+            {currentStep === 7 && renderStep7()}
+            {currentStep === 8 && renderStep8()}
+          </div>
+        </>
+      )}
     </div>
   );
 }

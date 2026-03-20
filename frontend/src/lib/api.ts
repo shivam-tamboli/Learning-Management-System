@@ -93,6 +93,8 @@ export const registrationService = {
     api.post(`/registration/${id}/status`, { action }),
   update: (id: string, data: { basicDetails?: any; address?: any; contact?: any; education?: any; health?: any; payment?: any; courseIds?: string[] }) =>
     api.put(`/registration/${id}`, data),
+  updateUser: (id: string, userData: { name?: string; phone?: string; address?: any }) =>
+    api.put(`/registration/${id}/user`, { userData }),
   delete: (id: string) => api.delete(`/registration/${id}`),
 };
 
@@ -125,6 +127,7 @@ const getAuthHeader = () => {
 
 export const documentService = {
   getByStudent: (studentId: string) => api.get(`/documents?studentId=${studentId}`),
+  getByRegistration: (registrationId: string) => api.get(`/documents?registrationId=${registrationId}`),
   upload: (formData: FormData) => {
     const headers: Record<string, string> = {};
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
