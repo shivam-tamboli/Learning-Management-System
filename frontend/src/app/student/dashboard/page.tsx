@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { progressService, courseService } from "@/lib/api";
 import { StatsCard } from "@/components/ui/StatsCard";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { useToast } from "@/components/ui/Toast";
 import { BookOpen, PlayCircle, Award, TrendingUp, GraduationCap } from "lucide-react";
 
 interface CourseWithProgress {
@@ -19,6 +20,7 @@ interface CourseWithProgress {
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const { error: showError } = useToast();
   const [courses, setCourses] = useState<CourseWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,6 +65,7 @@ export default function StudentDashboard() {
       setCourses(coursesWithProgress);
     } catch (error) {
       console.error("Failed to load courses:", error);
+      showError("Failed to load your courses");
     } finally {
       setLoading(false);
     }
