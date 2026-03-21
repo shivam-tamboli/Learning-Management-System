@@ -144,4 +144,51 @@ export async function userRoutes(fastify: FastifyInstance) {
       return { message: "User updated successfully" };
     }
   );
+
+  fastify.put<{ Params: { id: string }; Body: { currentPassword?: string; newPassword?: string } }>(
+    "/:id/password",
+    { preHandler: [fastify.authenticate as any] },
+    async (request: any, reply) => {
+      const { id } = request.params;
+      const { currentPassword, newPassword } = request.body;
+      const db = getDB();
+
+      if (!isValidObjectId(id)) {
+        return reply.status(400).send({ message: "Invalid user ID" });
+      }
+
+      if (request.user.id !== id) {
+        return reply.status(403).send({ message: "Cannot change another user's password" });
+      }
+
+      if (!newPassword) {
+        return reply.status(400).send({ message: "New password is required" });
+      }
+
+      const user = await db.collection("users").findOne({ _id: new ObjectId(id) });
+      if (!user) {
+        return reply.status(404).send({ message: "User not found" });
+      }
+
+      if (currentPassword) {
+        const validPassword = await bcrypt.compare(currentPassword, user.password);
+        if (!validPassword) {
+          return reply.status(401).send({ message: "Current password is incorrect" });
+        }
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await db.collection("users").updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { password: hashedPassword } }
+      );
+
+      await db.collection("sessions").deleteMany({
+        userId: new ObjectId(id),
+      });
+
+      return { message: "Password updated successfully" };
+    }
+  );
 }

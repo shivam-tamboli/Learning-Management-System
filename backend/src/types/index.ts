@@ -7,6 +7,16 @@ export interface User {
   approved: boolean;
 }
 
+export interface Session {
+  _id?: any;
+  userId: any;
+  refreshTokenHash: string;
+  userAgent?: string;
+  ip?: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
 export interface Course {
   _id?: any;
   title: string;

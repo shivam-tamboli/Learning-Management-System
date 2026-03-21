@@ -28,6 +28,9 @@ async function buildServer() {
 
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || "lms-secret-key-change-in-production",
+    sign: {
+      expiresIn: "15m",
+    },
   });
 
   await fastify.register(multipart, {

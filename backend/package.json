@@ -15,11 +15,13 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.0",
     "fastify": "^4.26.0",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.3.0",
     "razorpay": "^2.9.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "tsx": "^4.7.0",
     "typescript": "^5"

@@ -31,27 +31,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
+    const storedRefreshToken = localStorage.getItem("refreshToken");
     
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+    } else if (storedRefreshToken) {
+      localStorage.removeItem("refreshToken");
     }
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     const response = await authService.login(email, password);
-    const { token: newToken, user: newUser } = response.data;
+    const { accessToken, refreshToken, user: newUser } = response.data;
     
-    localStorage.setItem("token", newToken);
+    localStorage.setItem("token", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
     localStorage.setItem("user", JSON.stringify(newUser));
     
-    setToken(newToken);
+    setToken(accessToken);
     setUser(newUser);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    
+    if (refreshToken) {
+      try {
+        await authService.logout(refreshToken);
+      } catch (error) {
+        // Ignore logout errors
+      }
+    }
+    
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
