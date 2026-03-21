@@ -10,6 +10,17 @@ import {
   REFRESH_TOKEN_EXPIRY_MS,
 } from "../utils/token.js";
 
+const ACCESS_TOKEN_MAX_AGE = 15 * 60;
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60;
+
+function buildTokenCookie(name: string, value: string, maxAge: number): string {
+  return `${name}=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+}
+
+function buildClearCookie(name: string): string {
+  return `${name}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
+}
+
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: { email: string; password: string } }>(
     "/login",
@@ -27,7 +38,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({ message: "Invalid credentials" });
       }
 
-      const accessToken = generateAccessToken({
+      const accessToken = generateAccessToken(fastify, {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
@@ -45,9 +56,10 @@ export async function authRoutes(fastify: FastifyInstance) {
         expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
       });
 
+      reply.header("Set-Cookie", buildTokenCookie("token", accessToken, ACCESS_TOKEN_MAX_AGE));
+      reply.header("Set-Cookie", buildTokenCookie("refreshToken", refreshToken, REFRESH_TOKEN_MAX_AGE));
+
       return reply.send({
-        accessToken,
-        refreshToken,
         user: {
           id: user._id.toString(),
           name: user.name,
@@ -90,12 +102,14 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({ message: "User not found" });
       }
 
-      const accessToken = generateAccessToken({
+      const accessToken = generateAccessToken(fastify, {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
         approved: user.approved,
       });
+
+      reply.header("Set-Cookie", buildTokenCookie("token", accessToken, ACCESS_TOKEN_MAX_AGE));
 
       return reply.send({ accessToken });
     }
@@ -115,7 +129,23 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
+      reply.header("Set-Cookie", buildClearCookie("token"));
+      reply.header("Set-Cookie", buildClearCookie("refreshToken"));
+
       return reply.send({ message: "Logged out successfully" });
+    }
+  );
+
+  fastify.get(
+    "/me",
+    { preHandler: [fastify.authenticate as any] },
+    async (request: any, reply) => {
+      return {
+        id: request.user.id,
+        email: request.user.email,
+        role: request.user.role,
+        approved: request.user.approved,
+      };
     }
   );
 

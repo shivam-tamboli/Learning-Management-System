@@ -13,75 +13,61 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  validated: boolean;
   isLoading: boolean;
   isAdmin: boolean;
   isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [validated, setValidated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    const storedRefreshToken = localStorage.getItem("refreshToken");
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    } else if (storedRefreshToken) {
-      localStorage.removeItem("refreshToken");
+  const validateSession = async () => {
+    try {
+      const response = await authService.validateSession();
+      setUser(response.data);
+    } catch {
+      setUser(null);
+    } finally {
+      setValidated(true);
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    validateSession().finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await authService.login(email, password);
-    const { accessToken, refreshToken, user: newUser } = response.data;
-    
-    localStorage.setItem("token", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
-    localStorage.setItem("user", JSON.stringify(newUser));
-    
-    setToken(accessToken);
+    const { user: newUser } = response.data;
     setUser(newUser);
+    return newUser;
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    
-    if (refreshToken) {
-      try {
-        await authService.logout(refreshToken);
-      } catch (error) {
-        // Ignore logout errors
-      }
-    }
-    
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    setToken(null);
+    const refreshToken = document.cookie.match(/refreshToken=([^;]+)/)?.[1] || "";
+    await authService.logout(refreshToken);
     setUser(null);
+    setValidated(false);
+    setIsLoading(true);
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
-        login,
-        logout,
+        validated,
         isLoading,
         isAdmin: user?.role === "admin",
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
+        login,
+        logout,
       }}
     >
       {children}

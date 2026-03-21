@@ -20,15 +20,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user.role === "admin") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/student/dashboard");
-        }
+      const user = await login(email, password);
+      if (user.role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/student/dashboard");
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed. Please try again.");

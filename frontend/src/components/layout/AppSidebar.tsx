@@ -15,8 +15,9 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/components/ui/ThemeProvider";
+import { useAuth } from "@/lib/auth";
 
 interface NavItem {
   label: string;
@@ -48,11 +49,19 @@ function SidebarContent({ isAdmin, onNavClick }: SidebarContentProps) {
   const router = useRouter();
   const navItems = isAdmin ? adminNavItems : studentNavItems;
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
+  const shouldRedirect = useRef(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
+  useEffect(() => {
+    if (shouldRedirect.current) {
+      shouldRedirect.current = false;
+      router.push("/login");
+    }
+  });
+
+  const handleLogout = async () => {
+    await logout();
+    shouldRedirect.current = true;
   };
 
   const isActive = (href: string) => {

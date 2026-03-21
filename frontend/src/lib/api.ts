@@ -7,6 +7,7 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -21,36 +22,26 @@ const onRefreshed = (token: string) => {
   refreshSubscribers = [];
 };
 
+const getRefreshTokenFromCookie = (): string | null => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/refreshToken=([^;]+)/);
+  return match ? match[1] : null;
+};
+
 const refreshAccessToken = async (): Promise<string | null> => {
-  const refreshToken = localStorage.getItem("refreshToken");
+  const refreshToken = getRefreshTokenFromCookie();
   if (!refreshToken) return null;
 
   try {
-    const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+    const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, {
+      withCredentials: true,
+    });
     const { accessToken } = response.data;
-    
-    if (accessToken) {
-      localStorage.setItem("token", accessToken);
-      return accessToken;
-    }
-    return null;
+    return accessToken || null;
   } catch (error) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
     return null;
   }
 };
-
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
-});
 
 api.interceptors.response.use(
   (response) => response,
@@ -77,17 +68,9 @@ api.interceptors.response.use(
           onRefreshed(newToken);
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
-        } else {
-          if (typeof window !== "undefined") {
-            window.location.href = "/login";
-          }
-          return Promise.reject(error);
         }
-      } catch (refreshError) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
-        return Promise.reject(refreshError);
+      } catch {
+        // Refresh failed - reject and let component handle
       } finally {
         isRefreshing = false;
       }
@@ -106,6 +89,8 @@ export const authService = {
   
   logout: (refreshToken: string) =>
     api.post("/auth/logout", { refreshToken }),
+  
+  validateSession: () => api.get("/auth/me"),
   
   register: (data: { name: string; email: string; password: string; role: string }) =>
     api.post("/auth/register", data),
@@ -187,26 +172,13 @@ export const progressService = {
     api.get(`/progress${studentId ? `?studentId=${studentId}` : ""}`),
 };
 
-const getAuthHeader = () => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }
-  return {};
-};
-
 export const documentService = {
   getByStudent: (studentId: string) => api.get(`/documents?studentId=${studentId}`),
   getByRegistration: (registrationId: string) => api.get(`/documents?registrationId=${registrationId}`),
   upload: (formData: FormData) => {
-    const headers: Record<string, string> = {};
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
     return fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/documents`, {
       method: "POST",
-      headers,
+      credentials: "include",
       body: formData,
     }).then((res) => res.json());
   },
