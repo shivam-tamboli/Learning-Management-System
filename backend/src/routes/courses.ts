@@ -36,7 +36,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
 
       if (!isAdmin) {
         const registration = await db.collection("registrations").findOne({
-          studentId: userId,
+          userId: userId,
           courseIds: id,
           status: "approved"
         });
@@ -57,7 +57,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get<{ Querystring: { enrolled: string } }>(
+  fastify.get(
     "/enrolled",
     { preHandler: [fastify.authenticate as any] },
     async (request: any, reply) => {
@@ -65,19 +65,57 @@ export async function courseRoutes(fastify: FastifyInstance) {
       const userId = request.user.id;
 
       const registrations = await db.collection("registrations").find({
-        studentId: userId,
+        userId: userId,
         status: "approved"
       }).toArray();
 
       const courseIds = registrations.flatMap((r: any) => r.courseIds || []);
       const uniqueCourseIds = [...new Set(courseIds)];
-
       const validIds = uniqueCourseIds.filter(isValidObjectId);
+
+      if (validIds.length === 0) {
+        return [];
+      }
+
       const courses = await db.collection("courses").find({
         _id: { $in: validIds.map((id: string) => new ObjectId(id)) }
       }).toArray();
 
-      return courses;
+      const coursesWithProgress = await Promise.all(
+        courses.map(async (course) => {
+          const courseIdStr = course._id.toString();
+          
+          const modules = await db.collection("modules").find({ courseId: courseIdStr }).toArray();
+          const moduleIds = modules.map((m: any) => m._id.toString());
+          
+          const totalVideos = moduleIds.length > 0
+            ? await db.collection("videos").countDocuments({ moduleId: { $in: moduleIds } })
+            : 0;
+
+          const completedVideos = totalVideos > 0
+            ? await db.collection("progress").countDocuments({
+                studentId: userId,
+                courseId: courseIdStr,
+                isCompleted: true
+              })
+            : 0;
+
+          const progress = totalVideos > 0 
+            ? Math.round((completedVideos / totalVideos) * 100) 
+            : 0;
+
+          return {
+            _id: course._id.toString(),
+            title: course.title,
+            description: course.description || "",
+            totalVideos,
+            completedVideos,
+            progress
+          };
+        })
+      );
+
+      return coursesWithProgress;
     }
   );
 
