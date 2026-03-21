@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import { connectDB } from "./db/index.js";
+import { setupErrorHandler } from "./utils/errorHandler.js";
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
 import { courseRoutes } from "./routes/courses.js";
@@ -35,6 +36,8 @@ async function buildServer() {
       fileSize: 10 * 1024 * 1024,
     },
   });
+
+  setupErrorHandler(fastify);
 
   const uploadsDir = path.join(process.cwd(), "uploads");
   if (!fs.existsSync(uploadsDir)) {
