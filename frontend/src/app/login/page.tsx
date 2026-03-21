@@ -3,36 +3,35 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { authService } from "@/lib/api";
+import { useAPI } from "@/hooks";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login: authLogin } = useAuth();
   const router = useRouter();
+
+  const loginAPI = useAPI(() => authService.login(email, password));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
 
     try {
-      await login(email, password);
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user.role === "admin") {
+      const response = await loginAPI.execute();
+      if (response?.data?.token) {
+        await authLogin(email, password);
+        const user = response.data.user;
+        if (user?.role === "admin") {
           router.push("/admin/dashboard");
         } else {
           router.push("/student/dashboard");
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Login failed. Please try again.");
-      setIsLoading(false);
+      // Error is handled by useAPI
     }
   };
 
@@ -43,7 +42,7 @@ export default function LoginPage() {
         <p className={styles.subtitle}>Sign in to continue</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
-          {error && <div className={styles.error}>{error}</div>}
+          {loginAPI.error && <div className={styles.error}>{loginAPI.error}</div>}
           
           <div className={styles.field}>
             <label htmlFor="email">Email</label>
@@ -54,7 +53,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required
-              disabled={isLoading}
+              disabled={loginAPI.loading}
             />
           </div>
 
@@ -67,12 +66,12 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              disabled={isLoading}
+              disabled={loginAPI.loading}
             />
           </div>
 
-          <button type="submit" className={styles.button} disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign In"}
+          <button type="submit" className={styles.button} disabled={loginAPI.loading}>
+            {loginAPI.loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
       </div>

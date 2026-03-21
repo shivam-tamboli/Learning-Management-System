@@ -11,6 +11,7 @@ import { Input, Select } from "@/components/ui/Input";
 import { LoadingPage } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { useAPI } from "@/hooks";
 import { X, Check, XCircle, Eye, Pencil, Trash2, UserPlus, CreditCard, Users } from "lucide-react";
 
 interface PaymentUpdateModalProps {
@@ -24,25 +25,25 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
   const [amount, setAmount] = useState(registration.payment?.amount?.toString() || "");
   const [status, setStatus] = useState<"pending" | "completed">(registration.payment?.status || "pending");
   const [reference, setReference] = useState(registration.payment?.reference || "");
-  const [loading, setLoading] = useState(false);
+
+  const updatePaymentAPI = useAPI(() =>
+    registrationService.updatePayment(registration._id, {
+      amount: parseFloat(amount) || 0,
+      status,
+      reference,
+    })
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      await registrationService.updatePayment(registration._id, {
-        amount: parseFloat(amount) || 0,
-        status,
-        reference,
-      });
+      await updatePaymentAPI.execute();
       success("Payment updated successfully");
       onUpdate();
       onClose();
     } catch (err: any) {
       showError(err.response?.data?.message || "Failed to update payment");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -91,8 +92,8 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Updating..." : "Update Payment"}
+            <Button type="submit" loading={updatePaymentAPI.loading} className="flex-1">
+              Update Payment
             </Button>
           </div>
         </form>
