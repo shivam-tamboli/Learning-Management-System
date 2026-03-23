@@ -44,13 +44,13 @@ export async function registrationRoutes(fastify: FastifyInstance) {
       const { studentId, courseIds, step, data } = request.body;
       const db = getDB();
 
-      if (step === 1 && courseIds && courseIds.length > 0) {
+      if (step === 1) {
         const email = data?.email?.trim?.();
         
         if (email) {
           const existingRegistration = await db.collection("registrations").findOne({
             "basicDetails.email": email,
-            status: { $in: ["pending", "approved"] }
+            status: { $in: ["pending", "approved", "draft"] }
           });
           
           if (existingRegistration) {
@@ -68,9 +68,11 @@ export async function registrationRoutes(fastify: FastifyInstance) {
         }
 
         const registrationData: any = {
-          courseIds,
-          status: "pending",
+          courseIds: courseIds || [],
+          status: "draft",
+          currentStep: 1,
           createdAt: new Date(),
+          updatedAt: new Date(),
           basicDetails: data,
           payment: { status: "pending", amount: 0 }
         };
@@ -86,7 +88,7 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ message: "Registration not found" });
         }
 
-        const updateData: any = {};
+        const updateData: any = { currentStep: step, updatedAt: new Date() };
         
         if (step === 2) updateData.address = data;
         else if (step === 3) updateData.contact = data;
@@ -349,6 +351,23 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           userId,
           status: "approved"
         });
+      } else if (action === "submit") {
+        const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
+        
+        if (!registration) {
+          return reply.status(404).send({ message: "Registration not found" });
+        }
+
+        if (registration.status !== "draft") {
+          return reply.status(400).send({ message: "Can only submit drafts for review" });
+        }
+
+        await db.collection("registrations").updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: "pending", updatedAt: new Date() } }
+        );
+        
+        return reply.send({ message: "Registration submitted for review", status: "pending" });
       } else if (action === "reject") {
         const registration = await db.collection("registrations").findOne({ _id: new ObjectId(id) });
         

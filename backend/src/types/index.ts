@@ -28,34 +28,42 @@ export interface Video {
 
 export interface Registration {
   _id?: any;
-  studentId: string;
+  studentId?: string;
   courseIds: string[];
-  basicDetails: {
+  basicDetails?: {
     firstName: string;
     lastName: string;
     dob: string;
     gender: string;
+    email?: string;
   };
-  address: {
+  address?: {
     street: string;
     city: string;
     state: string;
     pincode: string;
   };
-  contact: {
+  contact?: {
     phone: string;
     emergencyContact: string;
+    emergencyName?: string;
+    relationship?: string;
   };
-  education: {
+  education?: {
     qualification: string;
     institution: string;
     year: string;
+    percentage?: string;
   };
-  health: {
+  health?: {
     conditions: string;
     medications: string;
+    allergies?: string;
   };
-  status: "pending" | "approved" | "rejected";
+  status: "draft" | "pending" | "approved" | "rejected";
+  currentStep?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Document {

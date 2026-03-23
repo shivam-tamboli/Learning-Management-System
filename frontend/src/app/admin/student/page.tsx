@@ -12,7 +12,7 @@ import { LoadingPage } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { useAPI } from "@/hooks";
-import { X, Check, XCircle, Eye, Pencil, Trash2, UserPlus, CreditCard, Users } from "lucide-react";
+import { X, Check, XCircle, Eye, Pencil, Trash2, UserPlus, CreditCard, Users, Clock } from "lucide-react";
 
 interface PaymentUpdateModalProps {
   registration: any;
@@ -107,9 +107,23 @@ export default function StudentListPage() {
   const { success, error: showError, info } = useToast();
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [filter, setFilter] = useState<"all" | "draft" | "pending" | "approved" | "rejected">("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [paymentUpdateReg, setPaymentUpdateReg] = useState<any | null>(null);
+
+  const getDraftExpiryInfo = (createdAt: string) => {
+    const expiryDays = 7;
+    const created = new Date(createdAt);
+    const expiryDate = new Date(created);
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+    const now = new Date();
+    const daysRemaining = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      daysRemaining,
+      expiryDate: expiryDate.toLocaleDateString(),
+      isExpiringSoon: daysRemaining <= 2
+    };
+  };
 
   useEffect(() => {
     loadRegistrations();
@@ -188,7 +202,7 @@ export default function StudentListPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(["all", "pending", "approved", "rejected"] as const).map((f) => (
+        {(["all", "draft", "pending", "approved", "rejected"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -222,130 +236,177 @@ export default function StudentListPage() {
         <div className="space-y-4">
           {filteredRegistrations.map((reg) => (
             <Card key={reg._id} className="overflow-hidden">
-              <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <span className="text-lg font-semibold text-primary">
-                        {reg.basicDetails?.firstName?.[0] || "?"}
-                        {reg.basicDetails?.lastName?.[0] || ""}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-foreground">
-                          {reg.basicDetails?.firstName} {reg.basicDetails?.lastName}
-                        </h3>
-                        <StatusBadge status={reg.status} />
+              <div className="flex flex-col gap-4 p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                        <span className="text-lg font-semibold text-primary">
+                          {reg.basicDetails?.firstName?.[0] || "?"}
+                          {reg.basicDetails?.lastName?.[0] || ""}
+                        </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {reg.basicDetails?.email || "Email not provided"}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-foreground">
+                            {reg.basicDetails?.firstName} {reg.basicDetails?.lastName}
+                          </h3>
+                          <StatusBadge status={reg.status} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {reg.basicDetails?.email || "Email not provided"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                      <div>
+                        <span className="text-muted-foreground">DOB:</span>{" "}
+                        <span className="text-foreground">{reg.basicDetails?.dob || "N/A"}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Phone:</span>{" "}
+                        <span className="text-foreground">{reg.contact?.phone || "N/A"}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Courses:</span>{" "}
+                        <span className="text-foreground">{reg.courseIds?.length || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Payment:</span>
+                        <span className={reg.payment?.status === "completed" ? "text-emerald-600 font-medium" : "text-amber-600"}>
+                          {reg.payment?.status === "completed" 
+                            ? `✓ ₹${reg.payment?.amount || 0}` 
+                            : "○ Pending"}
+                        </span>
+                        {reg.status === "pending" && (
+                          <button
+                            onClick={() => setPaymentUpdateReg(reg)}
+                            className="rounded bg-secondary px-2 py-0.5 text-xs hover:bg-accent"
+                          >
+                            Update
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                      <span className="text-muted-foreground">DOB:</span>{" "}
-                      <span className="text-foreground">{reg.basicDetails?.dob || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Phone:</span>{" "}
-                      <span className="text-foreground">{reg.contact?.phone || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Courses:</span>{" "}
-                      <span className="text-foreground">{reg.courseIds?.length || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Payment:</span>
-                      <span className={reg.payment?.status === "completed" ? "text-emerald-600 font-medium" : "text-amber-600"}>
-                        {reg.payment?.status === "completed" 
-                          ? `✓ ₹${reg.payment?.amount || 0}` 
-                          : "○ Pending"}
-                      </span>
-                      {reg.status === "pending" && (
-                        <button
-                          onClick={() => setPaymentUpdateReg(reg)}
-                          className="rounded bg-secondary px-2 py-0.5 text-xs hover:bg-accent"
-                        >
-                          Update
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleView(reg._id)}>
-                    <Eye className="mr-1 h-4 w-4" />
-                    View
-                  </Button>
-
-                  {reg.status === "pending" && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
-                        <Pencil className="mr-1 h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => handleStatusUpdate(reg._id, "approve")}
-                        disabled={processingId === reg._id}
-                      >
-                        <Check className="mr-1 h-4 w-4" />
-                        Approve
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleStatusUpdate(reg._id, "reject")}
-                        disabled={processingId === reg._id}
-                      >
-                        <XCircle className="mr-1 h-4 w-4" />
-                        Reject
-                      </Button>
-                    </>
-                  )}
-
-                  {reg.status === "rejected" && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
-                        <Pencil className="mr-1 h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleDelete(reg._id)}
-                        disabled={processingId === reg._id}
-                      >
-                        <Trash2 className="mr-1 h-4 w-4" />
-                        {processingId === reg._id ? "Deleting..." : "Delete"}
-                      </Button>
-                    </>
-                  )}
-
-                  {reg.status === "approved" && (
-                    <Button variant="outline" size="sm" onClick={() => handleUpdateInfo(reg._id)}>
-                      <Pencil className="mr-1 h-4 w-4" />
-                      Update Info
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleView(reg._id)}>
+                      <Eye className="mr-1 h-4 w-4" />
+                      View
                     </Button>
-                  )}
-                </div>
-              </div>
 
-              {reg.status === "approved" && reg.credentials && (
-                <div className="border-t border-border bg-muted/30 px-5 py-3">
-                  <p className="text-xs font-medium text-muted-foreground">Credentials:</p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Email:</span> {reg.credentials.email}
-                    <span className="mx-2 text-muted-foreground">|</span>
-                    <span className="text-muted-foreground">Password:</span> {reg.credentials.password}
-                  </p>
+                    {reg.status === "draft" && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
+                          <Pencil className="mr-1 h-4 w-4" />
+                          Continue
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDelete(reg._id)}
+                          disabled={processingId === reg._id}
+                        >
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          {processingId === reg._id ? "Deleting..." : "Delete"}
+                        </Button>
+                      </>
+                    )}
+
+                    {reg.status === "pending" && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
+                          <Pencil className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => handleStatusUpdate(reg._id, "approve")}
+                          disabled={processingId === reg._id}
+                        >
+                          <Check className="mr-1 h-4 w-4" />
+                          Approve
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleStatusUpdate(reg._id, "reject")}
+                          disabled={processingId === reg._id}
+                        >
+                          <XCircle className="mr-1 h-4 w-4" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
+
+                    {reg.status === "rejected" && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
+                          <Pencil className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDelete(reg._id)}
+                          disabled={processingId === reg._id}
+                        >
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          {processingId === reg._id ? "Deleting..." : "Delete"}
+                        </Button>
+                      </>
+                    )}
+
+                    {reg.status === "approved" && (
+                      <Button variant="outline" size="sm" onClick={() => handleUpdateInfo(reg._id)}>
+                        <Pencil className="mr-1 h-4 w-4" />
+                        Update Info
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                {reg.status === "approved" && reg.credentials && (
+                  <div className="border-t border-border bg-muted/30 px-5 py-3">
+                    <p className="text-xs font-medium text-muted-foreground">Credentials:</p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Email:</span> {reg.credentials.email}
+                      <span className="mx-2 text-muted-foreground">|</span>
+                      <span className="text-muted-foreground">Password:</span> {reg.credentials.password}
+                    </p>
+                  </div>
+                )}
+
+                {reg.status === "draft" && reg.createdAt && (() => {
+                  const expiry = getDraftExpiryInfo(reg.createdAt);
+                  return (
+                    <div className={`border-t px-5 py-3 ${
+                      expiry.isExpiringSoon 
+                        ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20" 
+                        : "border-border bg-muted/30"
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <p className={`text-xs font-medium ${
+                            expiry.isExpiringSoon ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"
+                          }`}>
+                            Expires in {expiry.daysRemaining} day{expiry.daysRemaining !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                        <p className={`text-xs ${
+                          expiry.isExpiringSoon ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                        }`}>
+                          Will be deleted after {expiry.expiryDate}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             </Card>
           ))}
         </div>

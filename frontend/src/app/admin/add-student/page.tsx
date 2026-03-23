@@ -8,8 +8,13 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
-import { Check, FileText, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard, BookOpen, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, FileText, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard, BookOpen, User, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import styles from "./register.module.css";
+
+const SESSION_KEY_DRAFT_ID = "registrationDraftId";
+const SESSION_KEY_DRAFT_STEP = "registrationDraftStep";
+const SESSION_KEY_DRAFT_TIMESTAMP = "registrationDraftTimestamp";
+const AUTO_SAVE_INTERVAL = 30000;
 
 interface BasicDetails {
   firstName: string;
@@ -75,6 +80,11 @@ export default function AddStudentPage() {
   const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [registrationStatus, setRegistrationStatus] = useState<string>("");
+  
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [draftData, setDraftData] = useState<any>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
     firstName: "",
@@ -122,12 +132,160 @@ export default function AddStudentPage() {
     loadCourses();
     if (isEditing) {
       loadRegistration(editId);
+    } else if (!isProfileMode) {
+      checkForExistingDraft();
     }
   }, []);
+
+  const checkForExistingDraft = async () => {
+    const savedDraftId = sessionStorage.getItem(SESSION_KEY_DRAFT_ID);
+    const savedStep = sessionStorage.getItem(SESSION_KEY_DRAFT_STEP);
+    const savedTimestamp = sessionStorage.getItem(SESSION_KEY_DRAFT_TIMESTAMP);
+
+    if (savedDraftId && savedStep) {
+      try {
+        const res = await registrationService.getById(savedDraftId);
+        const reg = res.data;
+        
+        if (reg.status === "draft") {
+          setDraftData(reg);
+          setLastSaved(savedTimestamp ? new Date(savedTimestamp) : null);
+          setShowResumeModal(true);
+          setLoading(false);
+        } else {
+          clearDraftSession();
+          setLoading(false);
+        }
+      } catch {
+        clearDraftSession();
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  };
+
+  const resumeDraft = async () => {
+    if (!draftData) return;
+    
+    const draftId = draftData._id || draftData.id;
+    
+    try {
+      const res = await registrationService.getById(draftId);
+      const reg = res.data;
+      
+      if (reg.status !== "draft") {
+        clearDraftSession();
+        setShowResumeModal(false);
+        setDraftData(null);
+        showError("This registration has already been submitted");
+        return;
+      }
+      
+      setShowResumeModal(false);
+      setRegistrationId(draftId);
+      setRegistrationStatus(reg.status);
+      
+      if (reg.basicDetails) setBasicDetails(reg.basicDetails);
+      if (reg.address) setAddress(reg.address);
+      if (reg.contact) setContact(reg.contact);
+      if (reg.education) setEducation(reg.education);
+      if (reg.health) setHealth(reg.health);
+      if (reg.payment) {
+        setPayment({
+          amount: reg.payment.amount?.toString() || "",
+          status: reg.payment.status || "pending",
+          reference: reg.payment.reference || "",
+          notes: reg.payment.notes || "",
+        });
+      }
+      if (reg.courseIds) setSelectedCourses(reg.courseIds);
+      
+      const savedStep = sessionStorage.getItem(SESSION_KEY_DRAFT_STEP);
+      setCurrentStep(savedStep ? parseInt(savedStep) : 2);
+    } catch (error) {
+      console.error("Failed to resume draft:", error);
+      showError("Failed to resume registration. Please try again.");
+      clearDraftSession();
+      setShowResumeModal(false);
+      setDraftData(null);
+    }
+  };
+
+  const startFresh = () => {
+    clearDraftSession();
+    setShowResumeModal(false);
+    setDraftData(null);
+  };
+
+  const clearDraftSession = () => {
+    try {
+      sessionStorage.removeItem(SESSION_KEY_DRAFT_ID);
+      sessionStorage.removeItem(SESSION_KEY_DRAFT_STEP);
+      sessionStorage.removeItem(SESSION_KEY_DRAFT_TIMESTAMP);
+    } catch (error) {
+      console.error("Failed to clear draft session:", error);
+    }
+  };
+
+  const saveDraftToSession = (regId: string, step: number) => {
+    try {
+      sessionStorage.setItem(SESSION_KEY_DRAFT_ID, regId);
+      sessionStorage.setItem(SESSION_KEY_DRAFT_STEP, step.toString());
+      sessionStorage.setItem(SESSION_KEY_DRAFT_TIMESTAMP, new Date().toISOString());
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Failed to save draft to session:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!registrationId || isEditing || isProfileMode || currentStep === 1) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const currentData = getCurrentStepData();
+        if (Object.keys(currentData).length > 0) {
+          await registrationService.saveStep({
+            studentId: registrationId,
+            step: currentStep,
+            data: currentData,
+          });
+          sessionStorage.setItem(SESSION_KEY_DRAFT_TIMESTAMP, new Date().toISOString());
+          setLastSaved(new Date());
+        }
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+      }
+    }, AUTO_SAVE_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [registrationId, currentStep, isEditing, isProfileMode]);
+
+  const getCurrentStepData = () => {
+    switch (currentStep) {
+      case 2: return address;
+      case 3: return contact;
+      case 4: return education;
+      case 5: return health;
+      case 6: return payment;
+      default: return {};
+    }
+  };
+
+  const markAsUnsaved = () => {
+    if (!isEditing && !isProfileMode) {
+      setHasUnsavedChanges(true);
+    }
+  };
 
   const loadRegistration = async (id: string) => {
     try {
       setLoading(true);
+      setDraftData(null);
+      setShowResumeModal(false);
       const res = await registrationService.getById(id);
       const reg = res.data;
       setRegistrationId(id);
@@ -162,48 +320,118 @@ export default function AddStudentPage() {
       setCourses(res.data);
     } catch (error) {
       console.error("Failed to load courses:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleBasicDetailsSubmit = () => {
+  const handleBasicDetailsSubmit = async () => {
     if (!basicDetails.firstName || !basicDetails.lastName || !basicDetails.dob || !basicDetails.gender || !basicDetails.email) {
       showError("Please fill in all required fields");
       return;
     }
+
+    if (!isEditing && !isProfileMode && !registrationId) {
+      try {
+        setLoading(true);
+        const registrationRes = await registrationService.saveStep({
+          courseIds: selectedCourses,
+          step: 1,
+          data: basicDetails,
+        });
+        const newRegId = registrationRes.data.id;
+        setRegistrationId(newRegId);
+        saveDraftToSession(newRegId, 2);
+      } catch (error: any) {
+        showError(error.response?.data?.message || "Failed to start registration");
+        setLoading(false);
+        return;
+      }
+    }
+    setLoading(false);
     setCurrentStep(2);
+    markAsUnsaved();
   };
 
-  const handleAddressSubmit = () => {
+  const handleAddressSubmit = async () => {
     if (!address.street || !address.city || !address.state || !address.pincode) {
       showError("Please fill in all address fields");
       return;
     }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 2,
+          data: address,
+        });
+        saveDraftToSession(registrationId, 3);
+      } catch (error) {
+        console.error("Failed to save address:", error);
+      }
+    }
     setCurrentStep(3);
+    markAsUnsaved();
   };
 
-  const handleContactSubmit = () => {
+  const handleContactSubmit = async () => {
     if (!contact.phone || !contact.emergencyContact) {
       showError("Please fill in phone numbers");
       return;
     }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 3,
+          data: contact,
+        });
+        saveDraftToSession(registrationId, 4);
+      } catch (error) {
+        console.error("Failed to save contact:", error);
+      }
+    }
     setCurrentStep(4);
+    markAsUnsaved();
   };
 
-  const handleEducationSubmit = () => {
+  const handleEducationSubmit = async () => {
     if (!education.qualification || !education.institution || !education.year) {
       showError("Please fill in education details");
       return;
     }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 4,
+          data: education,
+        });
+        saveDraftToSession(registrationId, 5);
+      } catch (error) {
+        console.error("Failed to save education:", error);
+      }
+    }
     setCurrentStep(5);
+    markAsUnsaved();
   };
 
-  const handleHealthSubmit = () => {
+  const handleHealthSubmit = async () => {
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 5,
+          data: health,
+        });
+        saveDraftToSession(registrationId, 6);
+      } catch (error) {
+        console.error("Failed to save health:", error);
+      }
+    }
     setCurrentStep(6);
+    markAsUnsaved();
   };
 
-  const handleDocumentsSubmit = () => {
+  const handleDocumentsSubmit = async () => {
     if (!documents.idProof || !documents.addressProof || !documents.educationCertificate) {
       showError("Please upload all required documents");
       return;
@@ -211,12 +439,25 @@ export default function AddStudentPage() {
     setCurrentStep(7);
   };
 
-  const handlePaymentSubmit = () => {
+  const handlePaymentSubmit = async () => {
     if (!payment.amount || parseFloat(payment.amount) <= 0) {
       showError("Please enter a valid payment amount");
       return;
     }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 6,
+          data: payment,
+        });
+        saveDraftToSession(registrationId, 8);
+      } catch (error) {
+        console.error("Failed to save payment:", error);
+      }
+    }
     setCurrentStep(8);
+    markAsUnsaved();
   };
 
   const handleFileChange = (type: string, file: File | null) => {
@@ -304,7 +545,10 @@ export default function AddStudentPage() {
           courseIds: selectedCourses,
         });
 
-        success("Registration updated successfully!");
+        await registrationService.updateStatus(registrationId, "submit");
+
+        clearDraftSession();
+        success("Registration submitted for review");
         router.push("/admin/student");
       } else {
         const registrationRes = await registrationService.saveStep({
@@ -347,6 +591,9 @@ export default function AddStudentPage() {
 
         await uploadDocuments(newRegistrationId);
 
+        await registrationService.updateStatus(newRegistrationId, "submit");
+
+        clearDraftSession();
         success("Registration submitted successfully!");
         router.push("/admin/student");
       }
@@ -940,6 +1187,47 @@ export default function AddStudentPage() {
     );
   }
 
+  if (showResumeModal && draftData) {
+    return (
+      <div className="space-y-6">
+        <Card className="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              Resume Registration?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">
+              You have an incomplete registration from{" "}
+              <span className="font-medium text-foreground">
+                {lastSaved ? lastSaved.toLocaleString() : "earlier"}
+              </span>
+            </p>
+            {draftData.basicDetails?.firstName && (
+              <p className="text-sm">
+                Student: <span className="font-medium">{draftData.basicDetails.firstName} {draftData.basicDetails.lastName}</span>
+              </p>
+            )}
+            {draftData.courseIds?.length > 0 && (
+              <p className="text-sm">
+                Courses selected: <span className="font-medium">{draftData.courseIds.length}</span>
+              </p>
+            )}
+            <div className="flex gap-3 pt-2">
+              <Button onClick={resumeDraft} className="flex-1">
+                Resume
+              </Button>
+              <Button variant="outline" onClick={startFresh} className="flex-1">
+                Start New
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -956,10 +1244,17 @@ export default function AddStudentPage() {
             </p>
           </div>
           {!isProfileMode && !isEditing && (
-            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2">
-              <span className="text-sm text-muted-foreground">Step</span>
-              <span className="text-lg font-bold text-primary">{currentStep}</span>
-              <span className="text-sm text-muted-foreground">of 8</span>
+            <div className="flex flex-col items-end gap-1">
+              <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2">
+                <span className="text-sm text-muted-foreground">Step</span>
+                <span className="text-lg font-bold text-primary">{currentStep}</span>
+                <span className="text-sm text-muted-foreground">of 8</span>
+              </div>
+              {lastSaved && registrationId && (
+                <span className="text-xs text-muted-foreground">
+                  Last saved: {lastSaved.toLocaleTimeString()}
+                </span>
+              )}
             </div>
           )}
         </div>

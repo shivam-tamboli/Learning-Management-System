@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { connectDB } from "./db/index.js";
 import { setupErrorHandler } from "./utils/errorHandler.js";
+import { cleanupExpiredDrafts, setupDraftTTLIndex } from "./scripts/cleanup-drafts.js";
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
 import { courseRoutes } from "./routes/courses.js";
@@ -81,6 +82,9 @@ async function buildServer() {
   });
 
   await connectDB();
+  
+  await setupDraftTTLIndex();
+  await cleanupExpiredDrafts();
 
   fastify.get("/api/health", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };
