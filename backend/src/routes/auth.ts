@@ -1,10 +1,24 @@
 import { FastifyInstance } from "fastify";
 import { getDB } from "../db/index.js";
 import bcrypt from "bcryptjs";
+import { rateLimitConfig, rateLimitMessages } from "../config/rateLimit.js";
 
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: { email: string; password: string } }>(
     "/login",
+    {
+      config: {
+        rateLimit: {
+          max: rateLimitConfig.auth.login.max,
+          timeWindow: rateLimitConfig.auth.login.timeWindow,
+          errorResponseBuilder: () => ({
+            statusCode: 429,
+            error: "Too Many Requests",
+            message: rateLimitMessages.auth.login,
+          }),
+        },
+      },
+    },
     async (request, reply) => {
       const { email, password } = request.body;
       const db = getDB();
@@ -41,7 +55,20 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Body: { name: string; email: string; password: string; role: string } }>(
     "/register",
-    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
+    { 
+      preHandler: [fastify.authenticate as any, fastify.requireAdmin as any],
+      config: {
+        rateLimit: {
+          max: rateLimitConfig.auth.register.max,
+          timeWindow: rateLimitConfig.auth.register.timeWindow,
+          errorResponseBuilder: () => ({
+            statusCode: 429,
+            error: "Too Many Requests",
+            message: rateLimitMessages.auth.register,
+          }),
+        },
+      },
+    },
     async (request, reply) => {
       const { name, email, password, role } = request.body;
       const db = getDB();
