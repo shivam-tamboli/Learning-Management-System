@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/Input";
 import { LoadingPage } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { useAPI } from "@/hooks";
 import { Plus, ChevronDown, ChevronUp, Trash2, BookOpen, X } from "lucide-react";
 
 interface Course {
@@ -24,13 +25,14 @@ export default function CourseManagePage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCourse, setNewCourse] = useState({ title: "", description: "" });
-  const [creating, setCreating] = useState(false);
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [courseDetails, setCourseDetails] = useState<any>(null);
   const [newModule, setNewModule] = useState({ courseId: "", title: "" });
   const [newVideo, setNewVideo] = useState({ moduleId: "", title: "", youtubeUrl: "" });
-  const [addingModule, setAddingModule] = useState(false);
-  const [addingVideo, setAddingVideo] = useState(false);
+
+  const createCourseAPI = useAPI(() => courseService.create(newCourse));
+  const addModuleAPI = useAPI(() => courseService.createModule(newModule));
+  const addVideoAPI = useAPI(() => courseService.createVideo(newVideo));
 
   useEffect(() => {
     loadCourses();
@@ -50,9 +52,9 @@ export default function CourseManagePage() {
 
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCreating(true);
+
     try {
-      await courseService.create(newCourse);
+      await createCourseAPI.execute();
       success("Course created successfully");
       setNewCourse({ title: "", description: "" });
       setShowCreateModal(false);
@@ -60,8 +62,6 @@ export default function CourseManagePage() {
     } catch (error) {
       console.error("Failed to create course:", error);
       showError("Failed to create course");
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -94,9 +94,9 @@ export default function CourseManagePage() {
 
   const handleAddModule = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAddingModule(true);
+
     try {
-      await courseService.createModule(newModule);
+      await addModuleAPI.execute();
       success("Module added successfully");
       setNewModule({ courseId: newModule.courseId, title: "" });
       const res = await courseService.getById(newModule.courseId);
@@ -104,16 +104,14 @@ export default function CourseManagePage() {
     } catch (error) {
       console.error("Failed to add module:", error);
       showError("Failed to add module");
-    } finally {
-      setAddingModule(false);
     }
   };
 
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAddingVideo(true);
+
     try {
-      await courseService.createVideo(newVideo);
+      await addVideoAPI.execute();
       success("Video added successfully");
       setNewVideo({ moduleId: newVideo.moduleId, title: "", youtubeUrl: "" });
       if (courseDetails) {
@@ -122,8 +120,7 @@ export default function CourseManagePage() {
       }
     } catch (error) {
       console.error("Failed to add video:", error);
-    } finally {
-      setAddingVideo(false);
+      showError("Failed to add video");
     }
   };
 
@@ -248,8 +245,8 @@ export default function CourseManagePage() {
                         required
                         className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
                       />
-                      <Button type="submit" size="sm" disabled={addingModule}>
-                        {addingModule ? "..." : "Add Module"}
+                      <Button type="submit" size="sm" loading={addModuleAPI.loading && newModule.courseId === course._id}>
+                        Add Module
                       </Button>
                     </form>
                   </div>
@@ -305,8 +302,8 @@ export default function CourseManagePage() {
                                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               />
                             </div>
-                            <Button type="submit" size="sm" disabled={addingVideo}>
-                              {addingVideo ? "..." : "Add Video"}
+                            <Button type="submit" size="sm" loading={addVideoAPI.loading && newVideo.moduleId === mod._id}>
+                              Add Video
                             </Button>
                           </form>
 
@@ -387,8 +384,8 @@ export default function CourseManagePage() {
                 <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={creating} className="flex-1">
-                  {creating ? "Creating..." : "Create Course"}
+                <Button type="submit" loading={createCourseAPI.loading} className="flex-1">
+                  Create Course
                 </Button>
               </div>
             </form>
