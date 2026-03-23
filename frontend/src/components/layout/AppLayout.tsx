@@ -11,7 +11,7 @@ export function AppLayout({ children, isAdmin = false }: AppLayoutProps) {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar isAdmin={isAdmin} />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
         <div className="container mx-auto p-6">
           {children}
         </div>
