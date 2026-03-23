@@ -33,7 +33,7 @@ export async function progressRoutes(fastify: FastifyInstance) {
       }
 
       const registration = await db.collection("registrations").findOne({
-        studentId: userId,
+        userId: userId,
         courseIds: courseId
       });
 
@@ -65,12 +65,16 @@ export async function progressRoutes(fastify: FastifyInstance) {
         isCompleted: true
       });
 
-      const totalVideos = await db.collection("videos").countDocuments({});
+      const modules = await db.collection("modules").find({ courseId }).toArray();
+      const moduleIds = modules.map((m: any) => m._id.toString());
+      const totalVideos = moduleIds.length > 0
+        ? await db.collection("videos").countDocuments({ moduleId: { $in: moduleIds } })
+        : 0;
 
       return {
         message: "Video marked complete",
         progress: { id: result.insertedId.toString(), courseId, videoId, isCompleted: true },
-        percentage: Math.round((totalProgress / totalVideos) * 100)
+        percentage: totalVideos > 0 ? Math.round((totalProgress / totalVideos) * 100) : 0
       };
     }
   );

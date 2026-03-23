@@ -66,6 +66,50 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
   );
 
+  fastify.get(
+    "/me",
+    { preHandler: [fastify.authenticate as any] },
+    async (request: any, reply) => {
+      const db = getDB();
+      const userId = request.user.id;
+
+      if (!isValidObjectId(userId)) {
+        return reply.status(400).send({ message: "Invalid user ID" });
+      }
+
+      const user = await db.collection("users").findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { password: 0 } }
+      );
+
+      if (!user) {
+        return reply.status(404).send({ message: "User not found" });
+      }
+
+      const registration = await db.collection("registrations").findOne({
+        userId: userId,
+        status: "approved"
+      });
+
+      return {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        approved: user.approved,
+        createdAt: user.createdAt,
+        registration: registration ? {
+          basicDetails: registration.basicDetails || {},
+          address: registration.address || {},
+          contact: registration.contact || {},
+          education: registration.education || {},
+          health: registration.health || {},
+          enrolledCourses: registration.courseIds || []
+        } : null
+      };
+    }
+  );
+
   fastify.get<{ Params: { id: string } }>(
     "/:id",
     { preHandler: [fastify.authenticate as any] },

@@ -4,6 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registrationService, courseService, documentService } from "@/lib/api";
+import { Input, Select, Textarea } from "@/components/ui/Input";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { useToast } from "@/components/ui/Toast";
+import { Check, FileText, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard, BookOpen, User, ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./register.module.css";
 
 interface BasicDetails {
@@ -51,6 +56,7 @@ interface Payment {
 export default function AddStudentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { success, error: showError, info } = useToast();
   const editId = searchParams.get("edit");
   const mode = searchParams.get("mode");
   const isEditing = !!editId;
@@ -143,7 +149,7 @@ export default function AddStudentPage() {
       if (reg.courseIds) setSelectedCourses(reg.courseIds);
     } catch (error) {
       console.error("Failed to load registration:", error);
-      alert("Failed to load registration data");
+      showError("Failed to load registration data");
       router.push("/admin/student");
     } finally {
       setLoading(false);
@@ -163,7 +169,7 @@ export default function AddStudentPage() {
 
   const handleBasicDetailsSubmit = () => {
     if (!basicDetails.firstName || !basicDetails.lastName || !basicDetails.dob || !basicDetails.gender || !basicDetails.email) {
-      alert("Please fill in all fields");
+      showError("Please fill in all required fields");
       return;
     }
     setCurrentStep(2);
@@ -171,7 +177,7 @@ export default function AddStudentPage() {
 
   const handleAddressSubmit = () => {
     if (!address.street || !address.city || !address.state || !address.pincode) {
-      alert("Please fill in all address fields");
+      showError("Please fill in all address fields");
       return;
     }
     setCurrentStep(3);
@@ -179,7 +185,7 @@ export default function AddStudentPage() {
 
   const handleContactSubmit = () => {
     if (!contact.phone || !contact.emergencyContact) {
-      alert("Please fill in phone numbers");
+      showError("Please fill in phone numbers");
       return;
     }
     setCurrentStep(4);
@@ -187,7 +193,7 @@ export default function AddStudentPage() {
 
   const handleEducationSubmit = () => {
     if (!education.qualification || !education.institution || !education.year) {
-      alert("Please fill in education details");
+      showError("Please fill in education details");
       return;
     }
     setCurrentStep(5);
@@ -199,7 +205,7 @@ export default function AddStudentPage() {
 
   const handleDocumentsSubmit = () => {
     if (!documents.idProof || !documents.addressProof || !documents.educationCertificate) {
-      alert("Please upload all required documents");
+      showError("Please upload all required documents");
       return;
     }
     setCurrentStep(7);
@@ -207,7 +213,7 @@ export default function AddStudentPage() {
 
   const handlePaymentSubmit = () => {
     if (!payment.amount || parseFloat(payment.amount) <= 0) {
-      alert("Please enter a valid payment amount");
+      showError("Please enter a valid payment amount");
       return;
     }
     setCurrentStep(8);
@@ -264,11 +270,11 @@ export default function AddStudentPage() {
           address,
         });
 
-        alert("Profile updated successfully!");
+        success("Profile updated successfully!");
         router.push("/admin/student");
       } catch (error: any) {
         console.error("Profile update failed:", error);
-        alert(error.response?.data?.message || "Profile update failed. Please try again.");
+        showError(error.response?.data?.message || "Profile update failed. Please try again.");
       } finally {
         setSubmitting(false);
       }
@@ -276,7 +282,7 @@ export default function AddStudentPage() {
     }
 
     if (selectedCourses.length === 0) {
-      alert("Please select at least one course");
+      showError("Please select at least one course");
       return;
     }
 
@@ -298,7 +304,7 @@ export default function AddStudentPage() {
           courseIds: selectedCourses,
         });
 
-        alert("Registration updated successfully!");
+        success("Registration updated successfully!");
         router.push("/admin/student");
       } else {
         const registrationRes = await registrationService.saveStep({
@@ -341,138 +347,172 @@ export default function AddStudentPage() {
 
         await uploadDocuments(newRegistrationId);
 
-        alert("Registration submitted successfully!");
+        success("Registration submitted successfully!");
         router.push("/admin/student");
       }
     } catch (error: any) {
       console.error("Registration failed:", error);
-      alert(error.response?.data?.message || "Registration failed. Please try again.");
+      showError(error.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const stepLabels = [
+    { num: 1, label: "Basic", icon: User },
+    { num: 2, label: "Address", icon: MapPin },
+    { num: 3, label: "Contact", icon: Phone },
+    { num: 4, label: "Education", icon: GraduationCap },
+    { num: 5, label: "Health", icon: Heart },
+    { num: 6, label: "Documents", icon: Upload },
+    { num: 7, label: "Payment", icon: CreditCard },
+    { num: 8, label: "Courses", icon: BookOpen },
+  ];
+
+  const progressPercent = ((currentStep - 1) / 8) * 100;
+
   const renderStepIndicator = () => (
-    <div className={styles.stepIndicator}>
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => (
-        <div
-          key={step}
-          className={`${styles.step} ${currentStep >= step ? styles.active : ""} ${currentStep === step ? styles.current : ""}`}
-        >
-          <div className={styles.stepNumber}>{step}</div>
-          <div className={styles.stepLabel}>
-            {step === 1 && "Basic"}
-            {step === 2 && "Address"}
-            {step === 3 && "Contact"}
-            {step === 4 && "Education"}
-            {step === 5 && "Health"}
-            {step === 6 && "Documents"}
-            {step === 7 && "Payment"}
-            {step === 8 && "Courses"}
-          </div>
-        </div>
-      ))}
+    <div className="space-y-4">
+      <div className={styles.progressBar}>
+        <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
+      </div>
+      <div className={styles.stepIndicator}>
+        {stepLabels.map((step) => {
+          const Icon = step.icon;
+          const isActive = currentStep >= step.num;
+          const isCurrent = currentStep === step.num;
+          const isCompleted = currentStep > step.num;
+          
+          return (
+            <div
+              key={step.num}
+              className={`${styles.step} ${isActive ? styles.active : ""} ${isCurrent ? styles.current : ""} ${isCompleted ? styles.completed : ""}`}
+            >
+              {step.num > 1 && (
+                <div className={`${styles.stepConnector} ${isActive ? styles.stepConnectorActive : ""}`} />
+              )}
+              <div className={styles.stepNumber}>
+                {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+              </div>
+              <div className={styles.stepLabel}>{step.label}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 
   const renderStep1 = () => (
-    <div className={styles.formStep}>
-      <h2>Basic Details</h2>
-      <div className={styles.formGrid}>
-        <div className={styles.field}>
-          <label>First Name *</label>
-          <input
-            type="text"
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <User className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Basic Details</h2>
+          <p className="text-sm text-muted-foreground">Personal information about the student</p>
+        </div>
+      </div>
+      
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            label="First Name"
+            required
             value={basicDetails.firstName}
             onChange={(e) => setBasicDetails({ ...basicDetails, firstName: e.target.value })}
             placeholder="Enter first name"
           />
-        </div>
-        <div className={styles.field}>
-          <label>Last Name *</label>
-          <input
-            type="text"
+          <Input
+            label="Last Name"
+            required
             value={basicDetails.lastName}
             onChange={(e) => setBasicDetails({ ...basicDetails, lastName: e.target.value })}
             placeholder="Enter last name"
           />
-        </div>
-        <div className={styles.field}>
-          <label>Date of Birth *</label>
-          <input
+          <Input
             type="date"
+            label="Date of Birth"
+            required
             value={basicDetails.dob}
             onChange={(e) => setBasicDetails({ ...basicDetails, dob: e.target.value })}
           />
-        </div>
-        <div className={styles.field}>
-          <label>Gender *</label>
-          <select
+          <Select
+            label="Gender"
+            required
             value={basicDetails.gender}
             onChange={(e) => setBasicDetails({ ...basicDetails, gender: e.target.value })}
-          >
-            <option value="">Select Gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div className={styles.field}>
-          <label>Email Address *</label>
-          <input
-            type="email"
-            value={basicDetails.email}
-            onChange={(e) => setBasicDetails({ ...basicDetails, email: e.target.value })}
-            placeholder="student@example.com"
+            options={[
+              { value: "", label: "Select Gender" },
+              { value: "male", label: "Male" },
+              { value: "female", label: "Female" },
+              { value: "other", label: "Other" },
+            ]}
           />
+          <div className="sm:col-span-2">
+            <Input
+              type="email"
+              label="Email Address"
+              required
+              value={basicDetails.email}
+              onChange={(e) => setBasicDetails({ ...basicDetails, email: e.target.value })}
+              placeholder="student@example.com"
+            />
+          </div>
         </div>
       </div>
-      <div className={styles.actions}>
-        <Link href="/admin/dashboard" className={styles.cancelBtn}>
+      
+      <div className="flex justify-end gap-3">
+        <LinkButton href="/admin/student" variant="outline">
           Cancel
-        </Link>
-        <button type="button" onClick={handleBasicDetailsSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+        </LinkButton>
+        <Button onClick={handleBasicDetailsSubmit}>
+          Next
+        </Button>
       </div>
     </div>
   );
 
   const renderStep2 = () => (
-    <div className={styles.formStep}>
-      <h2>Address Information</h2>
-      <div className={styles.formGrid}>
-        <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
-          <label>Street Address *</label>
-          <input
-            type="text"
-            value={address.street}
-            onChange={(e) => setAddress({ ...address, street: e.target.value })}
-            placeholder="House No., Street Name, Area"
-          />
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <MapPin className="h-5 w-5 text-primary" />
         </div>
-        <div className={styles.field}>
-          <label>City *</label>
-          <input
-            type="text"
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Address Information</h2>
+          <p className="text-sm text-muted-foreground">Student&apos;s residential address</p>
+        </div>
+      </div>
+      
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Input
+              label="Street Address"
+              required
+              value={address.street}
+              onChange={(e) => setAddress({ ...address, street: e.target.value })}
+              placeholder="House No., Street Name, Area"
+            />
+          </div>
+          <Input
+            label="City"
+            required
             value={address.city}
             onChange={(e) => setAddress({ ...address, city: e.target.value })}
             placeholder="City"
           />
-        </div>
-        <div className={styles.field}>
-          <label>State *</label>
-          <input
-            type="text"
+          <Input
+            label="State"
+            required
             value={address.state}
             onChange={(e) => setAddress({ ...address, state: e.target.value })}
             placeholder="State"
           />
-        </div>
-        <div className={styles.field}>
-          <label>Pincode *</label>
-          <input
-            type="text"
+          <Input
+            label="Pincode"
+            required
             value={address.pincode}
             onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
             placeholder="6-digit pincode"
@@ -480,478 +520,507 @@ export default function AddStudentPage() {
           />
         </div>
       </div>
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(1)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button type="button" onClick={handleAddressSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+      
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(1)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button onClick={handleAddressSubmit}>
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 
   const renderStep3 = () => (
-    <div className={styles.formStep}>
-      <h2>Contact Details</h2>
-      <div className={styles.formGrid}>
-        <div className={styles.field}>
-          <label>Phone Number *</label>
-          <input
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <Phone className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Contact Details</h2>
+          <p className="text-sm text-muted-foreground">Phone and emergency contact information</p>
+        </div>
+      </div>
+      
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
             type="tel"
+            label="Phone Number"
+            required
             value={contact.phone}
             onChange={(e) => setContact({ ...contact, phone: e.target.value })}
             placeholder="10-digit phone number"
             maxLength={10}
           />
-        </div>
-        <div className={styles.field}>
-          <label>Emergency Contact Number *</label>
-          <input
+          <Input
             type="tel"
+            label="Emergency Contact Number"
+            required
             value={contact.emergencyContact}
             onChange={(e) => setContact({ ...contact, emergencyContact: e.target.value })}
             placeholder="10-digit phone number"
             maxLength={10}
           />
-        </div>
-        <div className={styles.field}>
-          <label>Emergency Contact Name</label>
-          <input
-            type="text"
+          <Input
+            label="Emergency Contact Name"
             value={contact.emergencyName}
             onChange={(e) => setContact({ ...contact, emergencyName: e.target.value })}
             placeholder="Emergency contact name"
           />
-        </div>
-        <div className={styles.field}>
-          <label>Relationship</label>
-          <select
+          <Select
+            label="Relationship"
             value={contact.relationship}
             onChange={(e) => setContact({ ...contact, relationship: e.target.value })}
-          >
-            <option value="">Select Relationship</option>
-            <option value="parent">Parent</option>
-            <option value="guardian">Guardian</option>
-            <option value="spouse">Spouse</option>
-            <option value="sibling">Sibling</option>
-            <option value="other">Other</option>
-          </select>
+            options={[
+              { value: "", label: "Select Relationship" },
+              { value: "parent", label: "Parent" },
+              { value: "guardian", label: "Guardian" },
+              { value: "spouse", label: "Spouse" },
+              { value: "sibling", label: "Sibling" },
+              { value: "other", label: "Other" },
+            ]}
+          />
         </div>
       </div>
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(2)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button type="button" onClick={handleContactSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+      
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(2)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button onClick={handleContactSubmit}>
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 
   const renderStep4 = () => (
-    <div className={styles.formStep}>
-      <h2>Education History</h2>
-      <div className={styles.formGrid}>
-        <div className={styles.field}>
-          <label>Highest Qualification *</label>
-          <select
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <GraduationCap className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Education History</h2>
+          <p className="text-sm text-muted-foreground">Academic qualifications and achievements</p>
+        </div>
+      </div>
+      
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select
+            label="Highest Qualification"
+            required
             value={education.qualification}
             onChange={(e) => setEducation({ ...education, qualification: e.target.value })}
-          >
-            <option value="">Select Qualification</option>
-            <option value="10th">10th Pass</option>
-            <option value="12th">12th Pass</option>
-            <option value="diploma">Diploma</option>
-            <option value="graduation">Graduation</option>
-            <option value="postgraduation">Post Graduation</option>
-          </select>
-        </div>
-        <div className={styles.field}>
-          <label>Institution/Board *</label>
-          <input
-            type="text"
+            options={[
+              { value: "", label: "Select Qualification" },
+              { value: "10th", label: "10th Pass" },
+              { value: "12th", label: "12th Pass" },
+              { value: "diploma", label: "Diploma" },
+              { value: "graduation", label: "Graduation" },
+              { value: "postgraduation", label: "Post Graduation" },
+            ]}
+          />
+          <Input
+            label="Institution/Board"
+            required
             value={education.institution}
             onChange={(e) => setEducation({ ...education, institution: e.target.value })}
             placeholder="School/University name"
           />
-        </div>
-        <div className={styles.field}>
-          <label>Year of Passing *</label>
-          <input
-            type="text"
+          <Input
+            label="Year of Passing"
+            required
             value={education.year}
             onChange={(e) => setEducation({ ...education, year: e.target.value })}
             placeholder="e.g., 2024"
             maxLength={4}
           />
-        </div>
-        <div className={styles.field}>
-          <label>Percentage/CGPA</label>
-          <input
-            type="text"
+          <Input
+            label="Percentage/CGPA"
             value={education.percentage}
             onChange={(e) => setEducation({ ...education, percentage: e.target.value })}
             placeholder="e.g., 85% or 8.5 CGPA"
           />
         </div>
       </div>
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(3)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button type="button" onClick={handleEducationSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+      
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(3)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button onClick={handleEducationSubmit}>
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 
   const renderStep5 = () => (
-    <div className={styles.formStep}>
-      <h2>Health Information</h2>
-      <p className={styles.subtitle}>This information helps us provide appropriate support</p>
-      <div className={styles.formGrid}>
-        <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
-          <label>Any Medical Conditions</label>
-          <textarea
-            value={health.conditions}
-            onChange={(e) => setHealth({ ...health, conditions: e.target.value })}
-            placeholder="List any medical conditions (or write 'None')"
-            rows={3}
-          />
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <Heart className="h-5 w-5 text-primary" />
         </div>
-        <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
-          <label>Current Medications</label>
-          <textarea
-            value={health.medications}
-            onChange={(e) => setHealth({ ...health, medications: e.target.value })}
-            placeholder="List any current medications (or write 'None')"
-            rows={2}
-          />
-        </div>
-        <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
-          <label>Allergies</label>
-          <textarea
-            value={health.allergies}
-            onChange={(e) => setHealth({ ...health, allergies: e.target.value })}
-            placeholder="List any allergies (food, medicine, etc.)"
-            rows={2}
-          />
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Health Information</h2>
+          <p className="text-sm text-muted-foreground">This information helps us provide appropriate support</p>
         </div>
       </div>
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(4)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button type="button" onClick={handleHealthSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+      
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <Textarea
+          label="Any Medical Conditions"
+          value={health.conditions}
+          onChange={(e) => setHealth({ ...health, conditions: e.target.value })}
+          placeholder="List any medical conditions (or write 'None')"
+          rows={3}
+        />
+        <Textarea
+          label="Current Medications"
+          value={health.medications}
+          onChange={(e) => setHealth({ ...health, medications: e.target.value })}
+          placeholder="List any current medications (or write 'None')"
+          rows={2}
+        />
+        <Textarea
+          label="Allergies"
+          value={health.allergies}
+          onChange={(e) => setHealth({ ...health, allergies: e.target.value })}
+          placeholder="List any allergies (food, medicine, etc.)"
+          rows={2}
+        />
+      </div>
+      
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(4)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button onClick={handleHealthSubmit}>
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 
   const renderStep6 = () => (
-    <div className={styles.formStep}>
-      <h2>Upload Documents</h2>
-      <p className={styles.subtitle}>Please upload the following documents (PDF, JPG, PNG)</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <Upload className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Upload Documents</h2>
+          <p className="text-sm text-muted-foreground">Please upload the following documents (PDF, JPG, PNG)</p>
+        </div>
+      </div>
       
-      <div className={styles.documentList}>
-        <div className={styles.documentItem}>
-          <div className={styles.documentInfo}>
-            <h4>ID Proof *</h4>
-            <p>Aadhaar Card, PAN Card, Passport, or Voter ID</p>
-          </div>
-          <label className={styles.uploadButton}>
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => handleFileChange("idProof", e.target.files?.[0] || null)}
-              style={{ display: "none" }}
-            />
-            {documents.idProof ? documents.idProof.name : "Choose File"}
-          </label>
-          {documents.idProof && (
-            <span className={styles.fileName}>{documents.idProof.name}</span>
-          )}
-        </div>
-
-        <div className={styles.documentItem}>
-          <div className={styles.documentInfo}>
-            <h4>Address Proof *</h4>
-            <p>Utility Bill, Bank Statement, or Rent Agreement</p>
-          </div>
-          <label className={styles.uploadButton}>
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => handleFileChange("addressProof", e.target.files?.[0] || null)}
-              style={{ display: "none" }}
-            />
-            {documents.addressProof ? documents.addressProof.name : "Choose File"}
-          </label>
-          {documents.addressProof && (
-            <span className={styles.fileName}>{documents.addressProof.name}</span>
-          )}
-        </div>
-
-        <div className={styles.documentItem}>
-          <div className={styles.documentInfo}>
-            <h4>Education Certificate *</h4>
-            <p>Highest qualification certificate or marksheet</p>
-          </div>
-          <label className={styles.uploadButton}>
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => handleFileChange("educationCertificate", e.target.files?.[0] || null)}
-              style={{ display: "none" }}
-            />
-            {documents.educationCertificate ? documents.educationCertificate.name : "Choose File"}
-          </label>
-          {documents.educationCertificate && (
-            <span className={styles.fileName}>{documents.educationCertificate.name}</span>
-          )}
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            { key: "idProof", title: "ID Proof", subtitle: "Aadhaar Card, PAN Card, Passport, or Voter ID" },
+            { key: "addressProof", title: "Address Proof", subtitle: "Utility Bill, Bank Statement, or Rent Agreement" },
+            { key: "educationCertificate", title: "Education Certificate", subtitle: "Highest qualification certificate or marksheet" },
+          ].map((doc) => (
+            <div key={doc.key} className={`flex flex-col gap-3 rounded-lg border p-4 transition-all ${
+              documents[doc.key as keyof typeof documents]
+                ? "border-emerald-200 bg-emerald-50/50"
+                : "border-border bg-muted/30 hover:border-primary/30"
+            }`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    documents[doc.key as keyof typeof documents]
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "bg-primary/10 text-primary"
+                  }`}>
+                    {documents[doc.key as keyof typeof documents] ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">{doc.title} <span className="text-destructive">*</span></h4>
+                    <p className="text-xs text-muted-foreground">{doc.subtitle}</p>
+                  </div>
+                </div>
+              </div>
+              <label className={`cursor-pointer rounded-lg border px-4 py-2 text-center text-sm font-medium transition-all ${
+                documents[doc.key as keyof typeof documents]
+                  ? "border-emerald-200 bg-card text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
+                  : "border-dashed border-input bg-background text-foreground hover:bg-accent"
+              }`}>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange(doc.key, e.target.files?.[0] || null)}
+                  className="hidden"
+                />
+                {documents[doc.key as keyof typeof documents] ? "Change File" : "Upload Document"}
+              </label>
+              {documents[doc.key as keyof typeof documents] && (
+                <p className="text-xs text-emerald-600 font-medium truncate">
+                  {(documents[doc.key as keyof typeof documents])?.name}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
-
-      <div className={styles.documentSummary}>
-        <div className={`${styles.docStatus} ${documents.idProof ? styles.complete : ""}`}>
-          {documents.idProof ? "✓" : "○"} ID Proof
-        </div>
-        <div className={`${styles.docStatus} ${documents.addressProof ? styles.complete : ""}`}>
-          {documents.addressProof ? "✓" : "○"} Address Proof
-        </div>
-        <div className={`${styles.docStatus} ${documents.educationCertificate ? styles.complete : ""}`}>
-          {documents.educationCertificate ? "✓" : "○"} Education Certificate
-        </div>
-      </div>
-
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(5)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button type="button" onClick={handleDocumentsSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+      
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(5)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button onClick={handleDocumentsSubmit}>
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 
   const renderStep7 = () => (
-    <div className={styles.formStep}>
-      <h2>Payment Information</h2>
-      <p className={styles.subtitle}>Record payment details for this registration</p>
-      <div className={styles.formGrid}>
-        <div className={styles.field}>
-          <label>Amount (INR) *</label>
-          <input
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <CreditCard className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Payment Information</h2>
+          <p className="text-sm text-muted-foreground">Record payment details for this registration</p>
+        </div>
+      </div>
+      
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
             type="number"
+            label="Amount (INR)"
+            required
             value={payment.amount}
             onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
             placeholder="Enter amount"
           />
-        </div>
-        <div className={styles.field}>
-          <label>Payment Status</label>
-          <select
+          <Select
+            label="Payment Status"
             value={payment.status}
             onChange={(e) => setPayment({ ...payment, status: e.target.value as "pending" | "completed" })}
-          >
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-        <div className={styles.field}>
-          <label>Reference / Transaction ID</label>
-          <input
-            type="text"
+            options={[
+              { value: "pending", label: "Pending" },
+              { value: "completed", label: "Completed" },
+            ]}
+          />
+          <Input
+            label="Reference / Transaction ID"
             value={payment.reference}
             onChange={(e) => setPayment({ ...payment, reference: e.target.value })}
             placeholder="Transaction ID, Receipt No., etc."
           />
-        </div>
-        <div className={styles.field}>
-          <label>Notes</label>
-          <textarea
+          <Textarea
+            label="Notes"
             value={payment.notes}
             onChange={(e) => setPayment({ ...payment, notes: e.target.value })}
             placeholder="Any additional notes about the payment"
             rows={3}
-            style={{ gridColumn: "1 / -1" }}
           />
         </div>
       </div>
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(6)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button type="button" onClick={handlePaymentSubmit} className={styles.nextBtn}>
-          Next →
-        </button>
+      
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(6)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button onClick={handlePaymentSubmit}>
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 
   const renderStep8 = () => (
-    <div className={styles.formStep}>
-      <h2>Select Courses</h2>
-      <p className={styles.subtitle}>Choose the courses you want to enroll in</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <BookOpen className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Select Courses</h2>
+          <p className="text-sm text-muted-foreground">Choose the courses to enroll in</p>
+        </div>
+      </div>
       
       {courses.length === 0 ? (
-        <div className={styles.noCourses}>
-          <p>No courses available. Please create courses first.</p>
-          <Link href="/admin/course/manage" className={styles.manageLink}>
-            Manage Courses →
-          </Link>
-        </div>
+        <Card className="py-12">
+          <CardContent className="flex flex-col items-center justify-center text-center">
+            <p className="text-lg font-medium text-muted-foreground">No courses available</p>
+            <p className="text-sm text-muted-foreground mb-4">Please create courses first</p>
+            <LinkButton href="/admin/course/manage" variant="outline">
+              Manage Courses →
+            </LinkButton>
+          </CardContent>
+        </Card>
       ) : (
-        <div className={styles.courseGrid}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
             <div
               key={course._id}
-              className={`${styles.courseCard} ${selectedCourses.includes(course._id) ? styles.selected : ""}`}
               onClick={() => toggleCourse(course._id)}
+              className={`cursor-pointer rounded-xl border p-4 transition-all hover:border-primary/50 ${
+                selectedCourses.includes(course._id)
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card"
+              }`}
             >
-              <div className={styles.checkbox}>
-                {selectedCourses.includes(course._id) && <span>✓</span>}
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <span className={`text-lg font-semibold ${selectedCourses.includes(course._id) ? "text-primary" : "text-muted-foreground"}`}>
+                  {selectedCourses.includes(course._id) ? "✓" : course.title[0]}
+                </span>
               </div>
-              <div className={styles.courseInfo}>
-                <h4>{course.title}</h4>
-                <p>{course.description}</p>
-              </div>
+              <h4 className="font-medium text-foreground">{course.title}</h4>
+              <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{course.description}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className={styles.summary}>
-        <h3>Registration Summary</h3>
-        <div className={styles.summaryGrid}>
-          <div className={styles.summaryItem}>
-            <span>Name:</span>
-            <strong>{basicDetails.firstName} {basicDetails.lastName}</strong>
+      <Card>
+        <CardHeader>
+          <CardTitle>Registration Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Name</p>
+              <p className="font-medium">{basicDetails.firstName} {basicDetails.lastName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Email</p>
+              <p className="font-medium">{basicDetails.email}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Payment</p>
+              <p className={`font-medium ${payment.status === "completed" ? "text-emerald-600" : "text-amber-600"}`}>
+                {payment.status === "completed" ? "✓ Completed" : "○ Pending"} - ₹{payment.amount || 0}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Selected Courses</p>
+              <p className="font-medium">{selectedCourses.length}</p>
+            </div>
           </div>
-          <div className={styles.summaryItem}>
-            <span>Email:</span>
-            <strong>{basicDetails.email}</strong>
-          </div>
-          <div className={styles.summaryItem}>
-            <span>Payment:</span>
-            <strong className={payment.status === "completed" ? "text-green-600" : "text-yellow-600"}>
-              {payment.status === "completed" ? "✓ Completed" : "○ Pending"} - ₹{payment.amount || 0}
-            </strong>
-          </div>
-          <div className={styles.summaryItem}>
-            <span>Selected Courses:</span>
-            <strong>{selectedCourses.length}</strong>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className={styles.actions}>
-        <button type="button" onClick={() => setCurrentStep(7)} className={styles.backBtn}>
-          ← Back
-        </button>
-        <button
-          type="button"
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(7)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button
           onClick={handleSubmit}
-          className={styles.submitBtn}
           disabled={submitting || (isProfileMode ? false : selectedCourses.length === 0)}
         >
           {submitting 
             ? (isProfileMode ? "Updating..." : isEditing ? "Updating..." : "Submitting...") 
             : (isProfileMode ? "Update Profile" : isEditing ? "Update Registration" : "Submit Registration")}
-        </button>
+        </Button>
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className={styles.container}>
-        <p className={styles.loading}>Loading...</p>
+      <div className="flex items-center justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <div>
-          <Link href="/admin/student" className={styles.backLink}>
-            ← Back to Registrations
-          </Link>
-          <h1>{isProfileMode ? "Update Profile" : isEditing ? "Edit Registration" : "Student Registration"}</h1>
-          <p>{isProfileMode ? "Update student profile information" : isEditing ? "Update registration details" : "Fill in the details to register a new student"}</p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <LinkButton href="/admin/student" variant="ghost" size="sm" className="w-fit -ml-2">
+              <ChevronLeft className="mr-1 h-4 w-4" /> Back to Registrations
+            </LinkButton>
+            <h1 className="text-2xl font-bold text-foreground">
+              {isProfileMode ? "Update Profile" : isEditing ? "Edit Registration" : "Student Registration"}
+            </h1>
+            <p className="text-muted-foreground">
+              {isProfileMode ? "Update student profile information" : isEditing ? "Update registration details" : "Fill in the details to register a new student"}
+            </p>
+          </div>
+          {!isProfileMode && !isEditing && (
+            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2">
+              <span className="text-sm text-muted-foreground">Step</span>
+              <span className="text-lg font-bold text-primary">{currentStep}</span>
+              <span className="text-sm text-muted-foreground">of 8</span>
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
       {isProfileMode ? (
-        <div className={styles.formStep}>
-          <h2>Update Profile Information</h2>
-          <p className={styles.subtitle}>Update student details for approved registration</p>
-          <div className={styles.formGrid}>
-            <div className={styles.field}>
-              <label>First Name *</label>
-              <input
-                type="text"
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <span className="text-lg font-semibold text-primary">✎</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Update Profile Information</h2>
+              <p className="text-sm text-muted-foreground">Update student details for approved registration</p>
+            </div>
+          </div>
+          
+          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="First Name"
+                required
                 value={basicDetails.firstName}
                 onChange={(e) => setBasicDetails({ ...basicDetails, firstName: e.target.value })}
                 placeholder="Enter first name"
               />
-            </div>
-            <div className={styles.field}>
-              <label>Last Name *</label>
-              <input
-                type="text"
+              <Input
+                label="Last Name"
+                required
                 value={basicDetails.lastName}
                 onChange={(e) => setBasicDetails({ ...basicDetails, lastName: e.target.value })}
                 placeholder="Enter last name"
               />
-            </div>
-            <div className={styles.field}>
-              <label>Phone Number</label>
-              <input
+              <Input
                 type="tel"
+                label="Phone Number"
                 value={contact.phone}
                 onChange={(e) => setContact({ ...contact, phone: e.target.value })}
                 placeholder="10-digit phone number"
                 maxLength={10}
               />
-            </div>
-            <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
-              <label>Street Address</label>
-              <input
-                type="text"
+              <Input
+                label="Street Address"
                 value={address.street}
                 onChange={(e) => setAddress({ ...address, street: e.target.value })}
                 placeholder="House No., Street Name, Area"
               />
-            </div>
-            <div className={styles.field}>
-              <label>City</label>
-              <input
-                type="text"
+              <Input
+                label="City"
                 value={address.city}
                 onChange={(e) => setAddress({ ...address, city: e.target.value })}
                 placeholder="City"
               />
-            </div>
-            <div className={styles.field}>
-              <label>State</label>
-              <input
-                type="text"
+              <Input
+                label="State"
                 value={address.state}
                 onChange={(e) => setAddress({ ...address, state: e.target.value })}
                 placeholder="State"
               />
-            </div>
-            <div className={styles.field}>
-              <label>Pincode</label>
-              <input
-                type="text"
+              <Input
+                label="Pincode"
                 value={address.pincode}
                 onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
                 placeholder="6-digit pincode"
@@ -959,25 +1028,23 @@ export default function AddStudentPage() {
               />
             </div>
           </div>
-          <div className={styles.actions}>
-            <Link href="/admin/student" className={styles.cancelBtn}>
+          <div className="flex justify-end gap-3 pt-2">
+            <LinkButton href="/admin/student" variant="outline">
               Cancel
-            </Link>
-            <button
-              type="button"
+            </LinkButton>
+            <Button
               onClick={handleSubmit}
-              className={styles.submitBtn}
               disabled={submitting}
             >
               {submitting ? "Updating..." : "Update Profile"}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
         <>
           {renderStepIndicator()}
 
-          <div className={styles.formContainer}>
+          <div className="space-y-6">
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
