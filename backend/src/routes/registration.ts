@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { getDB } from "../db/index.js";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
+import { rateLimitConfig, rateLimitMessages } from "../config/rateLimit.js";
 
 function isValidObjectId(id: string): boolean {
   try {
@@ -25,7 +26,20 @@ export async function registrationRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Body: { studentId?: string; courseIds?: string[]; step: number; data: any } }>(
     "/step",
-    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
+    { 
+      preHandler: [fastify.authenticate as any, fastify.requireAdmin as any],
+      config: {
+        rateLimit: {
+          max: rateLimitConfig.registration.step.max,
+          timeWindow: rateLimitConfig.registration.step.timeWindow,
+          errorResponseBuilder: () => ({
+            statusCode: 429,
+            error: "Too Many Requests",
+            message: rateLimitMessages.registration.step,
+          }),
+        },
+      },
+    },
     async (request, reply) => {
       const { studentId, courseIds, step, data } = request.body;
       const db = getDB();
