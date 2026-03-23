@@ -7,11 +7,14 @@ import { courseService, moduleService, videoService } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { StatsCard } from "@/components/ui/StatsCard";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { Plus, Trash2, BookOpen, Video, ArrowLeft, X } from "lucide-react";
 
 export default function CourseDetailPage() {
   const params = useParams();
   const courseId = params.id as string;
+  const { success, error: showError } = useToast();
 
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +23,14 @@ export default function CourseDetailPage() {
   const [addingModule, setAddingModule] = useState(false);
   const [addingVideo, setAddingVideo] = useState(false);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCourse();
@@ -31,6 +42,7 @@ export default function CourseDetailPage() {
       setCourse(res.data);
     } catch (error) {
       console.error("Failed to load course:", error);
+      showError("Failed to load course");
     } finally {
       setLoading(false);
     }
@@ -42,9 +54,11 @@ export default function CourseDetailPage() {
     try {
       await moduleService.create({ courseId, title: newModuleTitle });
       setNewModuleTitle("");
+      success("Module added successfully");
       loadCourse();
     } catch (error) {
       console.error("Failed to add module:", error);
+      showError("Failed to add module");
     } finally {
       setAddingModule(false);
     }
@@ -56,32 +70,60 @@ export default function CourseDetailPage() {
     try {
       await videoService.create(newVideo);
       setNewVideo({ moduleId: "", title: "", youtubeUrl: "" });
+      success("Video added successfully");
       loadCourse();
     } catch (error) {
       console.error("Failed to add video:", error);
+      showError("Failed to add video");
     } finally {
       setAddingVideo(false);
     }
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
-    if (!confirm("Delete this module and all its videos?")) return;
-    try {
-      await moduleService.delete(moduleId);
-      loadCourse();
-    } catch (error) {
-      console.error("Failed to delete module:", error);
-    }
+  const handleDeleteModule = (moduleId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Module",
+      message: "This will delete the module and all its videos. This action cannot be undone.",
+      variant: "destructive",
+      onConfirm: async () => {
+        setDeletingId(moduleId);
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+        try {
+          await moduleService.delete(moduleId);
+          success("Module deleted successfully");
+          loadCourse();
+        } catch (error) {
+          console.error("Failed to delete module:", error);
+          showError("Failed to delete module");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
-    if (!confirm("Delete this video?")) return;
-    try {
-      await videoService.delete(videoId);
-      loadCourse();
-    } catch (error) {
-      console.error("Failed to delete video:", error);
-    }
+  const handleDeleteVideo = (videoId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Video",
+      message: "This action cannot be undone.",
+      variant: "destructive",
+      onConfirm: async () => {
+        setDeletingId(videoId);
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+        try {
+          await videoService.delete(videoId);
+          success("Video deleted successfully");
+          loadCourse();
+        } catch (error) {
+          console.error("Failed to delete video:", error);
+          showError("Failed to delete video");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
   const extractYouTubeId = (url: string) => {
@@ -118,6 +160,17 @@ export default function CourseDetailPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        confirmText="Delete"
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
+        loading={!!deletingId}
+      />
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <LinkButton href="/admin/course/manage" variant="ghost" size="sm" className="mb-2 -ml-2">
@@ -193,9 +246,10 @@ export default function CourseDetailPage() {
                   variant="destructive"
                   size="sm"
                   onClick={() => handleDeleteModule(mod._id)}
+                  disabled={deletingId === mod._id}
                 >
                   <Trash2 className="mr-1 h-4 w-4" />
-                  Delete
+                  {deletingId === mod._id ? "..." : "Delete"}
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -261,6 +315,7 @@ export default function CourseDetailPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteVideo(video._id)}
+                            disabled={deletingId === video._id}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-4 w-4" />

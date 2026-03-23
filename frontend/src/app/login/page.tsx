@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { authService } from "@/lib/api";
 import { useAPI } from "@/hooks";
+import { useToast } from "@/components/ui/Toast";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
   
   const { login: authLogin } = useAuth();
   const router = useRouter();
+  const { success, error: showError } = useToast();
 
   const loginAPI = useAPI(() => authService.login(email, password));
 
@@ -22,6 +24,7 @@ export default function LoginPage() {
     try {
       const response = await loginAPI.execute();
       if (response?.data?.token) {
+        success("Login successful!");
         await authLogin(email, password);
         const user = response.data.user;
         if (user?.role === "admin") {
@@ -31,7 +34,7 @@ export default function LoginPage() {
         }
       }
     } catch (err: any) {
-      // Error is handled by useAPI
+      showError(loginAPI.error || "Login failed");
     }
   };
 
@@ -42,8 +45,6 @@ export default function LoginPage() {
         <p className={styles.subtitle}>Sign in to continue</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
-          {loginAPI.error && <div className={styles.error}>{loginAPI.error}</div>}
-          
           <div className={styles.field}>
             <label htmlFor="email">Email</label>
             <input

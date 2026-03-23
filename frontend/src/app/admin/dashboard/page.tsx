@@ -9,10 +9,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { LoadingPage } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 import { Plus, BookOpen, Users, Clock, ArrowRight, GraduationCap } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const { error: showError } = useToast();
   const [courses, setCourses] = useState<any[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,7 @@ export default function AdminDashboard() {
       setRegistrations(regRes.data);
     } catch (error) {
       console.error("Failed to load data:", error);
+      showError("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
