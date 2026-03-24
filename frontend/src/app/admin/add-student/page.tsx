@@ -142,6 +142,13 @@ export default function AddStudentPage() {
     const savedStep = sessionStorage.getItem(SESSION_KEY_DRAFT_STEP);
     const savedTimestamp = sessionStorage.getItem(SESSION_KEY_DRAFT_TIMESTAMP);
 
+    const stepNum = parseInt(savedStep || "0");
+    if (!savedDraftId || stepNum < 1 || stepNum > 8) {
+      clearDraftSession();
+      setLoading(false);
+      return;
+    }
+
     if (savedDraftId && savedStep) {
       try {
         const res = await registrationService.getById(savedDraftId);
@@ -203,6 +210,7 @@ export default function AddStudentPage() {
       
       const savedStep = sessionStorage.getItem(SESSION_KEY_DRAFT_STEP);
       setCurrentStep(savedStep ? parseInt(savedStep) : 2);
+      clearDraftSession();
     } catch (error) {
       console.error("Failed to resume draft:", error);
       showError("Failed to resume registration. Please try again.");
