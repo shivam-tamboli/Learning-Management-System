@@ -76,7 +76,7 @@ async function buildServer() {
 
   fastify.decorate("requireAdmin", async function (request: any, reply: any) {
     if (request.user.role !== "admin") {
-      reply.status(403).send({ message: "Admin access required" });
+      return reply.status(403).send({ message: "Admin access required" });
     }
   });
 

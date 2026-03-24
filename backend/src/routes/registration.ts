@@ -44,34 +44,15 @@ export async function registrationRoutes(fastify: FastifyInstance) {
       const { studentId, courseIds, step, data } = request.body;
       const db = getDB();
 
+      // Step 1: Create draft with courseIds (NEW - was basicDetails)
       if (step === 1 && courseIds && courseIds.length > 0) {
-        const email = data?.email?.trim?.();
-        
-        if (email) {
-          const existingRegistration = await db.collection("registrations").findOne({
-            "basicDetails.email": email,
-            status: { $in: ["pending", "approved"] }
-          });
-          
-          if (existingRegistration) {
-            return reply.status(400).send({ 
-              message: `A registration with email ${email} already exists (${existingRegistration.status}). Please use a different email or reject the existing registration first.`
-            });
-          }
-
-          const existingUser = await db.collection("users").findOne({ email });
-          if (existingUser) {
-            return reply.status(400).send({ 
-              message: `A user with email ${email} already exists. Please use a different email.`
-            });
-          }
-        }
-
         const registrationData: any = {
           courseIds,
-          status: "pending",
+          status: "draft",
+          currentStep: 1,
           createdAt: new Date(),
-          basicDetails: data,
+          updatedAt: new Date(),
+          basicDetails: {},
           payment: { status: "pending", amount: 0 }
         };
 
@@ -88,20 +69,58 @@ export async function registrationRoutes(fastify: FastifyInstance) {
 
         const updateData: any = {};
         
-        if (step === 2) updateData.address = data;
-        else if (step === 3) updateData.contact = data;
-        else if (step === 4) updateData.education = data;
-        else if (step === 5) updateData.health = data;
-        else if (step === 6) updateData.payment = data;
+        // Step 2: Save basicDetails (was step 1)
+        if (step === 2) {
+          const email = data?.email?.trim?.();
+          if (email) {
+            const existingRegistration = await db.collection("registrations").findOne({
+              _id: { $ne: new ObjectId(studentId) },
+              "basicDetails.email": email,
+              status: { $in: ["pending", "approved", "draft", "rejected"] }
+            });
+            
+            if (existingRegistration) {
+              return reply.status(400).send({ 
+                message: `A registration with email ${email} already exists (${existingRegistration.status}). Please use a different email.`
+              });
+            }
+
+            const existingUser = await db.collection("users").findOne({ email });
+            if (existingUser) {
+              return reply.status(400).send({ 
+                message: `A user with email ${email} already exists. Please use a different email.`
+              });
+            }
+          }
+          updateData.basicDetails = data;
+        }
+        // Step 3: Save address (was step 2)
+        else if (step === 3) updateData.address = data;
+        // Step 4: Save contact (was step 3)
+        else if (step === 4) updateData.contact = data;
+        // Step 5: Save education (was step 4)
+        else if (step === 5) updateData.education = data;
+        // Step 6: Save health (was step 5)
+        else if (step === 6) updateData.health = data;
+        // Step 7: Save payment (was step 6) - Also transition to pending
+        else if (step === 7) {
+          updateData.payment = data;
+          const existing = await db.collection("registrations").findOne({ _id: new ObjectId(studentId) });
+          if (existing && existing.status === "draft") {
+            updateData.status = "pending";
+          }
+        }
 
         if (Object.keys(updateData).length > 0) {
+          updateData.currentStep = step;
+          updateData.updatedAt = new Date();
           await db.collection("registrations").updateOne(
             { _id: new ObjectId(studentId) },
             { $set: updateData }
           );
         }
 
-        return reply.send({ message: "Step data saved", id: studentId });
+        return reply.send({ message: "Step data saved", id: studentId, status: updateData.status });
       }
 
       return reply.status(400).send({ message: "Invalid request. Step 1 requires courseIds, other steps require studentId" });
@@ -150,12 +169,24 @@ export async function registrationRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ message: "Registration not found" });
       }
 
+      const updateData: any = {
+        payment: { ...payment, updatedAt: new Date() }
+      };
+
+      if (payment.status === "completed" && registration.status === "draft") {
+        updateData.status = "pending";
+      }
+
       await db.collection("registrations").updateOne(
         { _id: new ObjectId(id) },
-        { $set: { payment: { ...payment, updatedAt: new Date() } } }
+        { $set: updateData }
       );
 
-      return reply.send({ message: "Payment updated successfully", payment });
+      return reply.send({ 
+        message: "Payment updated successfully", 
+        payment: updateData.payment,
+        status: updateData.status || registration.status
+      });
     }
   );
 
@@ -204,8 +235,17 @@ export async function registrationRoutes(fastify: FastifyInstance) {
       if (contact) updateData.contact = contact;
       if (education) updateData.education = education;
       if (health) updateData.health = health;
-      if (payment) updateData.payment = { ...registration.payment, ...payment };
+      if (payment) {
+        updateData.payment = { ...registration.payment, ...payment };
+        if (payment.status === "completed" && registration.status === "draft") {
+          updateData.status = "pending";
+        }
+      }
       if (courseIds) updateData.courseIds = courseIds;
+
+      if (registration.status === "draft" && !updateData.status && updateData.payment) {
+        updateData.status = "pending";
+      }
 
       updateData.updatedAt = new Date();
 
@@ -238,12 +278,12 @@ export async function registrationRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ message: "Cannot delete an approved registration to maintain data integrity" });
       }
 
-      await db.collection("registrations").deleteOne({ _id: new ObjectId(id) });
-
+      // Delete associated user if exists (only for non-approved registrations)
       if (registration.userId) {
         await db.collection("users").deleteOne({ _id: new ObjectId(registration.userId) });
       }
 
+      await db.collection("registrations").deleteOne({ _id: new ObjectId(id) });
       await db.collection("documents").deleteMany({ registrationId: id });
 
       return reply.send({ message: "Registration deleted successfully" });
@@ -277,8 +317,15 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ message: "Cannot approve a rejected registration. Create a new one." });
         }
 
+        if (registration.userId) {
+          return reply.status(400).send({ message: "Registration has already been approved. Cannot approve again." });
+        }
+
         if (!registration.payment || registration.payment.status !== "completed") {
-          return reply.status(400).send({ message: "Cannot approve: Payment not completed. Please update payment status first." });
+          const paymentStatus = registration.payment?.status || "not set";
+          return reply.status(400).send({ 
+            message: `Cannot approve: Payment status is "${paymentStatus}". Please update payment to "completed" first. Current amount: ₹${registration.payment?.amount || 0}`
+          });
         }
 
         const firstName = registration.basicDetails?.firstName || "Student";

@@ -112,7 +112,7 @@ export async function userRoutes(fastify: FastifyInstance) {
 
   fastify.get<{ Params: { id: string } }>(
     "/:id",
-    { preHandler: [fastify.authenticate as any] },
+    { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
     async (request: any, reply) => {
       const { id } = request.params;
       const db = getDB();
