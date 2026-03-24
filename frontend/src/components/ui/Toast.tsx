@@ -80,9 +80,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
   };
 
   const styles = {
-    success: "border-emerald-200 bg-emerald-50",
-    error: "border-red-200 bg-red-50",
-    info: "border-blue-200 bg-blue-50",
+    success: "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950",
+    error: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950",
+    info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950",
   };
 
   return (
