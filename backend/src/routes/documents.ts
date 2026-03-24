@@ -21,13 +21,19 @@ export async function documentRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { studentId?: string; registrationId?: string } }>(
     "/",
     { preHandler: [fastify.authenticate as any] },
-    async (request, reply) => {
+    async (request: any, reply) => {
       const { studentId, registrationId } = request.query;
       const db = getDB();
+      const currentUser = request.user;
       
       const query: any = {};
-      if (studentId) query.studentId = studentId;
-      if (registrationId) query.registrationId = registrationId;
+      
+      if (currentUser.role === "admin") {
+        if (studentId) query.studentId = studentId;
+        if (registrationId) query.registrationId = registrationId;
+      } else {
+        query.studentId = currentUser.id;
+      }
       
       const documents = await db.collection("documents").find(query).toArray();
       return documents;

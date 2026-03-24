@@ -87,7 +87,7 @@ export const registrationService = {
   saveStep: (data: any) => api.post("/registration/step", data),
   updateStudent: (id: string, studentId: string) =>
     api.put(`/registration/${id}/student`, { studentId }),
-  updatePayment: (id: string, payment: { amount: number; status: string; reference?: string }) =>
+  updatePayment: (id: string, payment: { amount: number; status: string; reference?: string; notes?: string }) =>
     api.put(`/registration/${id}/payment`, { payment }),
   updateStatus: (id: string, action: "approve" | "reject") =>
     api.post(`/registration/${id}/status`, { action }),

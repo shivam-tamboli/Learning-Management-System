@@ -11,6 +11,16 @@ export async function progressRoutes(fastify: FastifyInstance) {
       const userId = request.user.id;
       const db = getDB();
 
+      const registration = await db.collection("registrations").findOne({
+        userId: userId,
+        courseIds: { $in: [courseId] },
+        status: "approved"
+      });
+
+      if (!registration) {
+        return reply.status(403).send({ message: "Not enrolled in this course or registration not approved" });
+      }
+
       const progress = await db.collection("progress").find({
         studentId: userId,
         courseId
@@ -34,11 +44,12 @@ export async function progressRoutes(fastify: FastifyInstance) {
 
       const registration = await db.collection("registrations").findOne({
         userId: userId,
-        courseIds: courseId
+        courseIds: { $in: [courseId] },
+        status: "approved"
       });
 
       if (!registration) {
-        return reply.status(403).send({ message: "Not enrolled in this course" });
+        return reply.status(403).send({ message: "Not enrolled in this course or registration not approved" });
       }
 
       const existing = await db.collection("progress").findOne({

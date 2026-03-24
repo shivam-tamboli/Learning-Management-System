@@ -37,7 +37,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
       if (!isAdmin) {
         const registration = await db.collection("registrations").findOne({
           userId: userId,
-          courseIds: id,
+          courseIds: { $in: [id] },
           status: "approved"
         });
         
@@ -146,8 +146,23 @@ export async function courseRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ message: "Invalid course ID" });
       }
 
+      const modules = await db.collection("modules").find({ courseId: id }).toArray();
+      const moduleIds = modules.map((m: any) => m._id.toString());
+
+      if (moduleIds.length > 0) {
+        const videos = await db.collection("videos").find({ moduleId: { $in: moduleIds } }).toArray();
+        const videoIds = videos.map((v: any) => v._id.toString());
+
+        if (videoIds.length > 0) {
+          await db.collection("progress").deleteMany({ videoId: { $in: videoIds } });
+        }
+
+        await db.collection("videos").deleteMany({ moduleId: { $in: moduleIds } });
+      }
+
+      await db.collection("modules").deleteMany({ courseId: id });
       await db.collection("courses").deleteOne({ _id: new ObjectId(id) });
-      return { message: "Course deleted" };
+      return { message: "Course and all related data deleted" };
     }
   );
 }

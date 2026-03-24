@@ -167,54 +167,177 @@ export default function AddStudentPage() {
     }
   };
 
-  const handleBasicDetailsSubmit = () => {
+  const saveDraftToSession = (regId: string, step: number) => {
+    try {
+      const draftData = {
+        registrationId: regId,
+        currentStep: step,
+        savedAt: new Date().toISOString(),
+      };
+      sessionStorage.setItem(`registration_draft_${regId}`, JSON.stringify(draftData));
+    } catch (error) {
+      console.error("Failed to save draft to session:", error);
+    }
+  };
+
+  const handleCoursesSubmit = async () => {
+    if (selectedCourses.length === 0) {
+      showError("Please select at least one course");
+      return;
+    }
+
+    if (!isEditing && !isProfileMode && !registrationId) {
+      try {
+        setLoading(true);
+        const registrationRes = await registrationService.saveStep({
+          courseIds: selectedCourses,
+          step: 1,
+          data: {},
+        });
+        const newRegId = registrationRes.data.id;
+        setRegistrationId(newRegId);
+        saveDraftToSession(newRegId, 2);
+      } catch (error: any) {
+        showError(error.response?.data?.message || "Failed to save courses");
+        setLoading(false);
+        return;
+      }
+    }
+    setLoading(false);
+    setCurrentStep(2);
+  };
+
+  const handleBasicDetailsSubmit = async () => {
     if (!basicDetails.firstName || !basicDetails.lastName || !basicDetails.dob || !basicDetails.gender || !basicDetails.email) {
       showError("Please fill in all required fields");
       return;
     }
-    setCurrentStep(2);
-  };
 
-  const handleAddressSubmit = () => {
-    if (!address.street || !address.city || !address.state || !address.pincode) {
-      showError("Please fill in all address fields");
-      return;
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 2,
+          data: basicDetails,
+        });
+        saveDraftToSession(registrationId, 3);
+      } catch (error: any) {
+        console.error("Failed to save basic details:", error);
+        showError(error.response?.data?.message || "Failed to save. Please try again.");
+        return;
+      }
     }
     setCurrentStep(3);
   };
 
-  const handleContactSubmit = () => {
-    if (!contact.phone || !contact.emergencyContact) {
-      showError("Please fill in phone numbers");
+  const handleAddressSubmit = async () => {
+    if (!address.street || !address.city || !address.state || !address.pincode) {
+      showError("Please fill in all address fields");
       return;
+    }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 3,
+          data: address,
+        });
+        saveDraftToSession(registrationId, 4);
+      } catch (error: any) {
+        console.error("Failed to save address:", error);
+        showError(error.response?.data?.message || "Failed to save. Please try again.");
+        return;
+      }
     }
     setCurrentStep(4);
   };
 
-  const handleEducationSubmit = () => {
-    if (!education.qualification || !education.institution || !education.year) {
-      showError("Please fill in education details");
+  const handleContactSubmit = async () => {
+    if (!contact.phone || !contact.emergencyContact) {
+      showError("Please fill in phone numbers");
       return;
+    }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 4,
+          data: contact,
+        });
+        saveDraftToSession(registrationId, 5);
+      } catch (error: any) {
+        console.error("Failed to save contact:", error);
+        showError(error.response?.data?.message || "Failed to save. Please try again.");
+        return;
+      }
     }
     setCurrentStep(5);
   };
 
-  const handleHealthSubmit = () => {
+  const handleEducationSubmit = async () => {
+    if (!education.qualification || !education.institution || !education.year) {
+      showError("Please fill in education details");
+      return;
+    }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 5,
+          data: education,
+        });
+        saveDraftToSession(registrationId, 6);
+      } catch (error: any) {
+        console.error("Failed to save education:", error);
+        showError(error.response?.data?.message || "Failed to save. Please try again.");
+        return;
+      }
+    }
     setCurrentStep(6);
   };
 
-  const handleDocumentsSubmit = () => {
-    if (!documents.idProof || !documents.addressProof || !documents.educationCertificate) {
-      showError("Please upload all required documents");
-      return;
+  const handleHealthSubmit = async () => {
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 6,
+          data: health,
+        });
+        saveDraftToSession(registrationId, 7);
+      } catch (error: any) {
+        console.error("Failed to save health:", error);
+        showError(error.response?.data?.message || "Failed to save. Please try again.");
+        return;
+      }
     }
     setCurrentStep(7);
   };
 
-  const handlePaymentSubmit = () => {
+  const handleDocumentsSubmit = async () => {
+    if (!documents.idProof || !documents.addressProof || !documents.educationCertificate) {
+      showError("Please upload all required documents");
+      return;
+    }
+    setCurrentStep(8);
+  };
+
+  const handlePaymentSubmit = async () => {
     if (!payment.amount || parseFloat(payment.amount) <= 0) {
       showError("Please enter a valid payment amount");
       return;
+    }
+    if (registrationId && !isEditing) {
+      try {
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 7,
+          data: payment,
+        });
+        saveDraftToSession(registrationId, 8);
+      } catch (error) {
+        console.error("Failed to save payment:", error);
+      }
     }
     setCurrentStep(8);
   };
@@ -306,7 +429,50 @@ export default function AddStudentPage() {
 
         success("Registration updated successfully!");
         router.push("/admin/student");
+      } else if (registrationId) {
+        // Use existing registration (user completed step-by-step flow)
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 2,
+          data: basicDetails,
+        });
+
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 3,
+          data: address,
+        });
+
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 4,
+          data: contact,
+        });
+
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 5,
+          data: education,
+        });
+
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 6,
+          data: health,
+        });
+
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: 7,
+          data: payment,
+        });
+
+        await uploadDocuments(registrationId);
+
+        success("Registration submitted successfully!");
+        router.push("/admin/student");
       } else {
+        // Fallback: create new registration (shouldn't happen normally)
         const registrationRes = await registrationService.saveStep({
           courseIds: selectedCourses,
           step: 1,
@@ -341,7 +507,7 @@ export default function AddStudentPage() {
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
-          step: 6,
+          step: 7,
           data: payment,
         });
 
@@ -359,14 +525,14 @@ export default function AddStudentPage() {
   };
 
   const stepLabels = [
-    { num: 1, label: "Basic", icon: User },
-    { num: 2, label: "Address", icon: MapPin },
-    { num: 3, label: "Contact", icon: Phone },
-    { num: 4, label: "Education", icon: GraduationCap },
-    { num: 5, label: "Health", icon: Heart },
-    { num: 6, label: "Documents", icon: Upload },
-    { num: 7, label: "Payment", icon: CreditCard },
-    { num: 8, label: "Courses", icon: BookOpen },
+    { num: 1, label: "Courses", icon: BookOpen },
+    { num: 2, label: "Basic", icon: User },
+    { num: 3, label: "Address", icon: MapPin },
+    { num: 4, label: "Contact", icon: Phone },
+    { num: 5, label: "Education", icon: GraduationCap },
+    { num: 6, label: "Health", icon: Heart },
+    { num: 7, label: "Documents", icon: Upload },
+    { num: 8, label: "Payment", icon: CreditCard },
   ];
 
   const progressPercent = ((currentStep - 1) / 8) * 100;
@@ -402,7 +568,7 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep1 = () => (
+  const renderStep2 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -462,18 +628,18 @@ export default function AddStudentPage() {
         </div>
       </div>
       
-      <div className="flex justify-end gap-3">
-        <LinkButton href="/admin/student" variant="outline">
-          Cancel
-        </LinkButton>
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" onClick={() => setCurrentStep(1)}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
         <Button onClick={handleBasicDetailsSubmit}>
-          Next
+          Next <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
     </div>
   );
 
-  const renderStep2 = () => (
+  const renderStep3 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -522,7 +688,7 @@ export default function AddStudentPage() {
       </div>
       
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(1)}>
+        <Button variant="outline" onClick={() => setCurrentStep(2)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleAddressSubmit}>
@@ -532,7 +698,7 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep4 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -587,7 +753,7 @@ export default function AddStudentPage() {
       </div>
       
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(2)}>
+        <Button variant="outline" onClick={() => setCurrentStep(3)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleContactSubmit}>
@@ -597,7 +763,7 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep4 = () => (
+  const renderStep5 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -650,7 +816,7 @@ export default function AddStudentPage() {
       </div>
       
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(3)}>
+        <Button variant="outline" onClick={() => setCurrentStep(4)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleEducationSubmit}>
@@ -660,7 +826,7 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep5 = () => (
+  const renderStep6 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -697,7 +863,7 @@ export default function AddStudentPage() {
       </div>
       
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(4)}>
+        <Button variant="outline" onClick={() => setCurrentStep(5)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleHealthSubmit}>
@@ -707,7 +873,7 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep6 = () => (
+  const renderStep7 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -774,7 +940,7 @@ export default function AddStudentPage() {
       </div>
       
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(5)}>
+        <Button variant="outline" onClick={() => setCurrentStep(6)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleDocumentsSubmit}>
@@ -784,7 +950,7 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep7 = () => (
+  const renderStep8 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -832,17 +998,19 @@ export default function AddStudentPage() {
       </div>
       
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(6)}>
+        <Button variant="outline" onClick={() => setCurrentStep(7)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <Button onClick={handlePaymentSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
+        <Button onClick={handleSubmit}>
+          {submitting 
+            ? (isProfileMode ? "Updating..." : isEditing ? "Updating..." : "Submitting...") 
+            : (isProfileMode ? "Update Profile" : isEditing ? "Update Registration" : "Submit Registration")}
         </Button>
       </div>
     </div>
   );
 
-  const renderStep8 = () => (
+  const renderStep1 = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -916,17 +1084,12 @@ export default function AddStudentPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(7)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
+      <div className="flex justify-end pt-2">
         <Button
-          onClick={handleSubmit}
+          onClick={handleCoursesSubmit}
           disabled={submitting || (isProfileMode ? false : selectedCourses.length === 0)}
         >
-          {submitting 
-            ? (isProfileMode ? "Updating..." : isEditing ? "Updating..." : "Submitting...") 
-            : (isProfileMode ? "Update Profile" : isEditing ? "Update Registration" : "Submit Registration")}
+          {submitting ? "Saving..." : "Next"} <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
     </div>

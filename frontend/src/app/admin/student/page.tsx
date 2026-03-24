@@ -292,7 +292,8 @@ export default function StudentListPage() {
                         size="sm" 
                         className="bg-emerald-600 hover:bg-emerald-700"
                         onClick={() => handleStatusUpdate(reg._id, "approve")}
-                        disabled={processingId === reg._id}
+                        disabled={processingId === reg._id || reg.payment?.status !== "completed"}
+                        title={reg.payment?.status !== "completed" ? `Payment must be "completed" (currently "${reg.payment?.status || 'pending'}")` : ""}
                       >
                         <Check className="mr-1 h-4 w-4" />
                         Approve
@@ -309,7 +310,7 @@ export default function StudentListPage() {
                     </>
                   )}
 
-                  {reg.status === "rejected" && (
+                  {(reg.status === "pending" || reg.status === "rejected") && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
                         <Pencil className="mr-1 h-4 w-4" />

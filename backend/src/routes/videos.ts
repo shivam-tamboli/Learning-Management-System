@@ -47,8 +47,9 @@ export async function videoRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ message: "Invalid video ID" });
       }
 
+      await db.collection("progress").deleteMany({ videoId: id });
       await db.collection("videos").deleteOne({ _id: new ObjectId(id) });
-      return { message: "Video deleted" };
+      return { message: "Video and related progress deleted" };
     }
   );
 }

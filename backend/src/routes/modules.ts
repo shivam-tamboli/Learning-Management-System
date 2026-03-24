@@ -47,8 +47,16 @@ export async function moduleRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ message: "Invalid module ID" });
       }
 
+      const videos = await db.collection("videos").find({ moduleId: id }).toArray();
+      const videoIds = videos.map((v: any) => v._id.toString());
+
+      if (videoIds.length > 0) {
+        await db.collection("progress").deleteMany({ videoId: { $in: videoIds } });
+      }
+
+      await db.collection("videos").deleteMany({ moduleId: id });
       await db.collection("modules").deleteOne({ _id: new ObjectId(id) });
-      return { message: "Module deleted" };
+      return { message: "Module and all related videos deleted" };
     }
   );
 }

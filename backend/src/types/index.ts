@@ -55,7 +55,7 @@ export interface Registration {
     conditions: string;
     medications: string;
   };
-  status: "pending" | "approved" | "rejected";
+  status: "draft" | "pending" | "approved" | "rejected";
 }
 
 export interface Document {

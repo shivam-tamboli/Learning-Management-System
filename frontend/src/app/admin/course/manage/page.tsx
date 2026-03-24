@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Input";
 import { LoadingPage } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { useAPI } from "@/hooks";
 import { Plus, ChevronDown, ChevronUp, Trash2, BookOpen, X } from "lucide-react";
@@ -29,6 +30,12 @@ export default function CourseManagePage() {
   const [courseDetails, setCourseDetails] = useState<any>(null);
   const [newModule, setNewModule] = useState({ courseId: "", title: "" });
   const [newVideo, setNewVideo] = useState({ moduleId: "", title: "", youtubeUrl: "" });
+  
+  const [confirmDelete, setConfirmDelete] = useState<{
+    type: "course" | "module" | "video" | null;
+    id: string | null;
+    name: string;
+  }>({ type: null, id: null, name: "" });
 
   const createCourseAPI = useAPI(() => courseService.create(newCourse));
   const addModuleAPI = useAPI(() => courseService.createModule(newModule));
@@ -65,10 +72,12 @@ export default function CourseManagePage() {
     }
   };
 
-  const handleDeleteCourse = async (id: string) => {
+  const handleDeleteCourse = async () => {
+    if (!confirmDelete.id) return;
     try {
-      await courseService.delete(id);
+      await courseService.delete(confirmDelete.id);
       success("Course deleted successfully");
+      setConfirmDelete({ type: null, id: null, name: "" });
       loadCourses();
     } catch (error) {
       console.error("Failed to delete course:", error);
@@ -124,10 +133,12 @@ export default function CourseManagePage() {
     }
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
+  const handleDeleteModule = async () => {
+    if (!confirmDelete.id) return;
     try {
-      await moduleService.delete(moduleId);
+      await moduleService.delete(confirmDelete.id);
       success("Module deleted successfully");
+      setConfirmDelete({ type: null, id: null, name: "" });
       if (courseDetails) {
         const res = await courseService.getById(courseDetails._id);
         setCourseDetails(res.data);
@@ -138,10 +149,12 @@ export default function CourseManagePage() {
     }
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
+  const handleDeleteVideo = async () => {
+    if (!confirmDelete.id) return;
     try {
-      await videoService.delete(videoId);
+      await videoService.delete(confirmDelete.id);
       success("Video deleted successfully");
+      setConfirmDelete({ type: null, id: null, name: "" });
       if (courseDetails) {
         const res = await courseService.getById(courseDetails._id);
         setCourseDetails(res.data);
@@ -224,7 +237,7 @@ export default function CourseManagePage() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeleteCourse(course._id)}
+                    onClick={() => setConfirmDelete({ type: "course", id: course._id, name: course.title })}
                   >
                     <Trash2 className="mr-1 h-4 w-4" />
                     Delete
@@ -265,7 +278,7 @@ export default function CourseManagePage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteModule(mod._id)}
+                                onClick={() => setConfirmDelete({ type: "module", id: mod._id, name: mod.title })}
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -334,7 +347,7 @@ export default function CourseManagePage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleDeleteVideo(video._id)}
+                                      onClick={() => setConfirmDelete({ type: "video", id: video._id, name: video.title })}
                                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -392,6 +405,23 @@ export default function CourseManagePage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete.type !== null}
+        onConfirm={() => {
+          if (confirmDelete.type === "course") handleDeleteCourse();
+          else if (confirmDelete.type === "module") handleDeleteModule();
+          else if (confirmDelete.type === "video") handleDeleteVideo();
+        }}
+        onCancel={() => setConfirmDelete({ type: null, id: null, name: "" })}
+        title={`Delete ${confirmDelete.type === "course" ? "Course" : confirmDelete.type === "module" ? "Module" : "Video"}`}
+        message={`Are you sure you want to delete "${confirmDelete.name}"? This will also delete all ${
+          confirmDelete.type === "course" ? "modules, videos, and progress" : 
+          confirmDelete.type === "module" ? "videos and progress" : "related progress"
+        }.`}
+        confirmText="Delete"
+        variant="destructive"
+      />
     </div>
   );
 }
