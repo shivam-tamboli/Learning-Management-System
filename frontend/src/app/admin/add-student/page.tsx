@@ -359,14 +359,14 @@ export default function AddStudentPage() {
   };
 
   const stepLabels = [
-    { num: 1, label: "Basic", icon: User },
-    { num: 2, label: "Address", icon: MapPin },
-    { num: 3, label: "Contact", icon: Phone },
-    { num: 4, label: "Education", icon: GraduationCap },
-    { num: 5, label: "Health", icon: Heart },
-    { num: 6, label: "Documents", icon: Upload },
-    { num: 7, label: "Payment", icon: CreditCard },
-    { num: 8, label: "Courses", icon: BookOpen },
+    { num: 1, label: "Basic" },
+    { num: 2, label: "Address" },
+    { num: 3, label: "Contact" },
+    { num: 4, label: "Education" },
+    { num: 5, label: "Health" },
+    { num: 6, label: "Documents" },
+    { num: 7, label: "Payment" },
+    { num: 8, label: "Courses" },
   ];
 
   const progressPercent = ((currentStep - 1) / 8) * 100;
@@ -378,7 +378,6 @@ export default function AddStudentPage() {
       </div>
       <div className={styles.stepIndicator}>
         {stepLabels.map((step) => {
-          const Icon = step.icon;
           const isActive = currentStep >= step.num;
           const isCurrent = currentStep === step.num;
           const isCompleted = currentStep > step.num;
@@ -392,7 +391,7 @@ export default function AddStudentPage() {
                 <div className={`${styles.stepConnector} ${isActive ? styles.stepConnectorActive : ""}`} />
               )}
               <div className={styles.stepNumber}>
-                {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                {isCompleted ? <Check className="h-4 w-4" /> : step.num}
               </div>
               <div className={styles.stepLabel}>{step.label}</div>
             </div>
