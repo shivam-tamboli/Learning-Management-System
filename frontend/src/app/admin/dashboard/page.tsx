@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { courseService, registrationService } from "@/lib/api";
-import { StatsCard } from "@/components/ui/StatsCard";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { LoadingPage } from "@/components/ui/Loading";
@@ -56,31 +55,51 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatsCard
-          title="Total Courses"
-          value={courses.length}
-          description="Active courses in the system"
-        />
-        <StatsCard
-          title="Total Registrations"
-          value={registrations.length}
-          description="All student registrations"
-        />
-        <StatsCard
-          title="Pending Approvals"
-          value={pendingCount}
-          description="Awaiting your review"
-          variant="warning"
-        />
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Courses</p>
+              <p className="text-3xl font-bold text-foreground mt-1">{courses.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">Active courses in the system</p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950">
+              <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Registrations</p>
+              <p className="text-3xl font-bold text-foreground mt-1">{registrations.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">All student registrations</p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-950">
+              <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Pending Approvals</p>
+              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1">{pendingCount}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Awaiting your review</p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900">
+              <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <LinkButton
           href="/admin/add-student"
-          className="group flex flex-col items-start gap-2 p-6 h-auto border-2 border-dashed border-primary/30 hover:border-primary bg-card hover:bg-primary/5 transition-colors"
+          className="group flex flex-col items-start gap-3 p-6 h-auto rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
               <Plus className="h-5 w-5 text-primary" />
             </div>
             <span className="font-semibold text-foreground">Add New Student</span>
@@ -91,10 +110,10 @@ export default function AdminDashboard() {
 
         <LinkButton
           href="/admin/course/manage"
-          className="group flex flex-col items-start gap-2 p-6 h-auto border-2 border-dashed border-primary/30 hover:border-primary bg-card hover:bg-primary/5 transition-colors"
+          className="group flex flex-col items-start gap-3 p-6 h-auto rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
               <BookOpen className="h-5 w-5 text-primary" />
             </div>
             <span className="font-semibold text-foreground">Manage Courses</span>
@@ -105,10 +124,10 @@ export default function AdminDashboard() {
 
         <LinkButton
           href="/admin/student"
-          className="group flex flex-col items-start gap-2 p-6 h-auto border-2 border-dashed border-primary/30 hover:border-primary bg-card hover:bg-primary/5 transition-colors"
+          className="group flex flex-col items-start gap-3 p-6 h-auto rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
               <Users className="h-5 w-5 text-primary" />
             </div>
             <span className="font-semibold text-foreground">View Registrations</span>
@@ -118,31 +137,31 @@ export default function AdminDashboard() {
         </LinkButton>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Courses</CardTitle>
-          <LinkButton href="/admin/course/manage" variant="ghost" size="sm">
+      <Card className="overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+          <CardTitle className="text-lg font-semibold">Recent Courses</CardTitle>
+          <LinkButton href="/admin/course/manage" variant="ghost" size="sm" className="-mr-2">
             View All
           </LinkButton>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {courses.length === 0 ? (
-            <EmptyState
-              icon={BookOpen}
-              title="No courses yet"
-              description="Create your first course to get started"
-              action={{
-                label: "Create Course",
-                onClick: () => window.location.href = "/admin/course/manage",
-              }}
-              className="py-8"
-            />
+            <div className="py-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mx-auto mb-4">
+                <BookOpen className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-foreground mb-1">No courses yet</p>
+              <p className="text-sm text-muted-foreground mb-4">Create your first course to get started</p>
+              <LinkButton href="/admin/course/manage" variant="outline" size="sm">
+                Create Course
+              </LinkButton>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-border">
               {courses.slice(0, 5).map((course) => (
                 <div
                   key={course._id}
-                  className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-accent"
+                  className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -166,14 +185,14 @@ export default function AdminDashboard() {
       </Card>
 
       {pendingCount > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-                <Clock className="h-5 w-5 text-amber-600" />
+        <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20 p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900">
+                <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="font-medium text-foreground">
+                <p className="font-semibold text-foreground">
                   {pendingCount} pending registration{pendingCount !== 1 ? "s" : ""} awaiting review
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -181,11 +200,11 @@ export default function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <LinkButton href="/admin/student?filter=pending" variant="outline" size="sm">
+            <LinkButton href="/admin/student?filter=pending" className="shrink-0 bg-amber-600 hover:bg-amber-700">
               Review Now
             </LinkButton>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
