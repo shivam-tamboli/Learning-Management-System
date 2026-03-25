@@ -8,7 +8,7 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
-import { Check, FileText, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard, BookOpen, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, FileText, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import styles from "./register.module.css";
 
 interface BasicDetails {
@@ -525,14 +525,14 @@ export default function AddStudentPage() {
   };
 
   const stepLabels = [
-    { num: 1, label: "Courses", icon: BookOpen },
-    { num: 2, label: "Basic", icon: User },
-    { num: 3, label: "Address", icon: MapPin },
-    { num: 4, label: "Contact", icon: Phone },
-    { num: 5, label: "Education", icon: GraduationCap },
-    { num: 6, label: "Health", icon: Heart },
-    { num: 7, label: "Documents", icon: Upload },
-    { num: 8, label: "Payment", icon: CreditCard },
+    { label: "Courses" },
+    { label: "Basic" },
+    { label: "Address" },
+    { label: "Contact" },
+    { label: "Education" },
+    { label: "Health" },
+    { label: "Documents" },
+    { label: "Payment" },
   ];
 
   const progressPercent = ((currentStep - 1) / 8) * 100;
@@ -543,23 +543,16 @@ export default function AddStudentPage() {
         <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
       </div>
       <div className={styles.stepIndicator}>
-        {stepLabels.map((step) => {
-          const Icon = step.icon;
-          const isActive = currentStep >= step.num;
-          const isCurrent = currentStep === step.num;
-          const isCompleted = currentStep > step.num;
+        {stepLabels.map((step, index) => {
+          const stepIndex = index + 1;
+          const isActive = currentStep >= stepIndex;
+          const isCurrent = currentStep === stepIndex;
           
           return (
             <div
-              key={step.num}
-              className={`${styles.step} ${isActive ? styles.active : ""} ${isCurrent ? styles.current : ""} ${isCompleted ? styles.completed : ""}`}
+              key={stepIndex}
+              className={`${styles.step} ${isActive ? styles.active : ""} ${isCurrent ? styles.current : ""}`}
             >
-              {step.num > 1 && (
-                <div className={`${styles.stepConnector} ${isActive ? styles.stepConnectorActive : ""}`} />
-              )}
-              <div className={styles.stepNumber}>
-                {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-              </div>
               <div className={styles.stepLabel}>{step.label}</div>
             </div>
           );
