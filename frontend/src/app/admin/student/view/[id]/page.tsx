@@ -103,155 +103,155 @@ export default function ViewRegistrationPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <User className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>1. Basic Details</CardTitle>
+            <CardTitle className="text-base">Basic Details</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Full Name</p>
-                <p className="font-medium">{registration.basicDetails?.firstName} {registration.basicDetails?.lastName}</p>
+                <p className="font-semibold mt-0.5">{registration.basicDetails?.firstName} {registration.basicDetails?.lastName}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
-                <p>{registration.basicDetails?.dob || "N/A"}</p>
+                <p className="mt-0.5">{registration.basicDetails?.dob || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Gender</p>
-                <p className="capitalize">{registration.basicDetails?.gender || "N/A"}</p>
+                <p className="capitalize mt-0.5">{registration.basicDetails?.gender || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Email</p>
-                <p>{registration.basicDetails?.email || "N/A"}</p>
+                <p className="mt-0.5">{registration.basicDetails?.email || "N/A"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <MapPin className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>2. Address</CardTitle>
+            <CardTitle className="text-base">Address</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-2 lg:col-span-4">
                 <p className="text-sm font-medium text-muted-foreground">Street Address</p>
-                <p>{registration.address?.street || "N/A"}</p>
+                <p className="mt-0.5">{registration.address?.street || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">City</p>
-                <p>{registration.address?.city || "N/A"}</p>
+                <p className="mt-0.5">{registration.address?.city || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">State</p>
-                <p>{registration.address?.state || "N/A"}</p>
+                <p className="mt-0.5">{registration.address?.state || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pincode</p>
-                <p>{registration.address?.pincode || "N/A"}</p>
+                <p className="mt-0.5">{registration.address?.pincode || "N/A"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <Phone className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>3. Contact</CardTitle>
+            <CardTitle className="text-base">Contact</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Phone Number</p>
-                <p>{registration.contact?.phone || "N/A"}</p>
+                <p className="mt-0.5">{registration.contact?.phone || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Emergency Contact</p>
-                <p>{registration.contact?.emergencyContact || "N/A"}</p>
+                <p className="mt-0.5">{registration.contact?.emergencyContact || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Emergency Contact Name</p>
-                <p>{registration.contact?.emergencyName || "N/A"}</p>
+                <p className="mt-0.5">{registration.contact?.emergencyName || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Relationship</p>
-                <p className="capitalize">{registration.contact?.relationship || "N/A"}</p>
+                <p className="capitalize mt-0.5">{registration.contact?.relationship || "N/A"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <GraduationCap className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>4. Education</CardTitle>
+            <CardTitle className="text-base">Education</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Highest Qualification</p>
-                <p className="capitalize">{registration.education?.qualification || "N/A"}</p>
+                <p className="capitalize mt-0.5">{registration.education?.qualification || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Institution/Board</p>
-                <p>{registration.education?.institution || "N/A"}</p>
+                <p className="mt-0.5">{registration.education?.institution || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Year of Passing</p>
-                <p>{registration.education?.year || "N/A"}</p>
+                <p className="mt-0.5">{registration.education?.year || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Percentage/CGPA</p>
-                <p>{registration.education?.percentage || "N/A"}</p>
+                <p className="mt-0.5">{registration.education?.percentage || "N/A"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <Heart className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>5. Health</CardTitle>
+            <CardTitle className="text-base">Health</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Medical Conditions</p>
-                <p>{registration.health?.conditions || "None"}</p>
+                <p className="mt-0.5">{registration.health?.conditions || "None"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Current Medications</p>
-                <p>{registration.health?.medications || "None"}</p>
+                <p className="mt-0.5">{registration.health?.medications || "None"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Allergies</p>
-                <p>{registration.health?.allergies || "None"}</p>
+                <p className="mt-0.5">{registration.health?.allergies || "None"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <FileText className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>6. Documents</CardTitle>
+            <CardTitle className="text-base">Documents</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             {documents.length > 0 ? (
               <div className="space-y-2">
                 {documents.map((doc) => (
@@ -270,47 +270,47 @@ export default function ViewRegistrationPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <CreditCard className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>7. Payment</CardTitle>
+            <CardTitle className="text-base">Payment</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Amount</p>
-                <p className="text-xl font-bold text-primary">₹{registration.payment?.amount || 0}</p>
+                <p className="text-xl font-bold text-primary mt-0.5">₹{registration.payment?.amount || 0}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <p className={registration.payment?.status === "completed" ? "text-emerald-600 font-medium" : "text-amber-600"}>
+                <p className={`mt-0.5 font-semibold ${registration.payment?.status === "completed" ? "text-emerald-600" : "text-amber-600"}`}>
                   {registration.payment?.status === "completed" ? "✓ Completed" : "○ Pending"}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Reference/Transaction ID</p>
-                <p>{registration.payment?.reference || "N/A"}</p>
+                <p className="mt-0.5">{registration.payment?.reference || "N/A"}</p>
               </div>
               {registration.payment?.notes && (
                 <div className="lg:col-span-2">
                   <p className="text-sm font-medium text-muted-foreground">Notes</p>
-                  <p>{registration.payment.notes}</p>
+                  <p className="mt-0.5">{registration.payment.notes}</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <BookOpen className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle>8. Courses</CardTitle>
+            <CardTitle className="text-base">Courses</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             {registration.courseIds && registration.courseIds.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {registration.courseIds.map((courseId: string) => (
@@ -326,29 +326,29 @@ export default function ViewRegistrationPage() {
         </Card>
 
         {(registration.status === "approved" || registration.status === "rejected") && registration.createdAt && (
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-3">
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                 <Clock className="h-5 w-5 text-primary" />
               </div>
-              <CardTitle>Timeline</CardTitle>
+              <CardTitle className="text-base">Timeline</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Created At</p>
-                  <p>{new Date(registration.createdAt).toLocaleString()}</p>
+                  <p className="mt-0.5">{new Date(registration.createdAt).toLocaleString()}</p>
                 </div>
                 {registration.approvedAt && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Approved At</p>
-                    <p>{new Date(registration.approvedAt).toLocaleString()}</p>
+                    <p className="mt-0.5">{new Date(registration.approvedAt).toLocaleString()}</p>
                   </div>
                 )}
                 {registration.rejectedAt && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Rejected At</p>
-                    <p>{new Date(registration.rejectedAt).toLocaleString()}</p>
+                    <p className="mt-0.5">{new Date(registration.rejectedAt).toLocaleString()}</p>
                   </div>
                 )}
               </div>

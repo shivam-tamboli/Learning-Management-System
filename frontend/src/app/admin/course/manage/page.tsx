@@ -203,15 +203,15 @@ export default function CourseManagePage() {
       ) : (
         <div className="space-y-4">
           {courses.map((course) => (
-            <Card key={course._id} className="overflow-hidden">
+            <Card key={course._id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
               <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                     <BookOpen className="h-6 w-6 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">{course.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                       {course.description || "No description"}
                     </p>
                   </div>
@@ -224,12 +224,12 @@ export default function CourseManagePage() {
                   >
                     {expandedCourse === course._id ? (
                       <>
-                        <ChevronUp className="mr-1 h-4 w-4" />
+                        <ChevronUp className="mr-1.5 h-4 w-4" />
                         Collapse
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="mr-1 h-4 w-4" />
+                        <ChevronDown className="mr-1.5 h-4 w-4" />
                         Manage
                       </>
                     )}
@@ -239,15 +239,15 @@ export default function CourseManagePage() {
                     size="sm"
                     onClick={() => setConfirmDelete({ type: "course", id: course._id, name: course.title })}
                   >
-                    <Trash2 className="mr-1 h-4 w-4" />
+                    <Trash2 className="mr-1.5 h-4 w-4" />
                     Delete
                   </Button>
                 </div>
               </div>
 
               {expandedCourse === course._id && courseDetails && (
-                <div className="border-t border-border bg-muted/30 p-5">
-                  <div className="mb-4">
+                <div className="border-t border-border bg-slate-50/50 dark:bg-slate-900/30 p-5">
+                  <div className="mb-5">
                     <h4 className="mb-3 font-semibold text-foreground">Modules</h4>
                     <form onSubmit={handleAddModule} className="flex gap-2">
                       <input
@@ -256,7 +256,7 @@ export default function CourseManagePage() {
                         value={newModule.courseId === course._id ? newModule.title : ""}
                         onChange={(e) => setNewModule({ courseId: course._id, title: e.target.value })}
                         required
-                        className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                        className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                       <Button type="submit" size="sm" loading={addModuleAPI.loading && newModule.courseId === course._id}>
                         Add Module
@@ -265,15 +265,15 @@ export default function CourseManagePage() {
                   </div>
 
                   {courseDetails.modules?.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-muted-foreground">
+                    <p className="py-6 text-center text-sm text-muted-foreground bg-muted/30 rounded-lg">
                       No modules yet. Add your first module above.
                     </p>
                   ) : (
                     <div className="space-y-4">
                       {courseDetails.modules?.map((mod: any) => (
-                        <div key={mod._id} className="rounded-lg border border-border bg-card p-4">
+                        <div key={mod._id} className="rounded-xl border border-border bg-card p-4">
                           <div className="mb-3 flex items-center justify-between">
-                            <h5 className="font-medium text-foreground">{mod.title}</h5>
+                            <h5 className="font-semibold text-foreground">{mod.title}</h5>
                             <div className="flex gap-2">
                               <Button
                                 variant="ghost"
@@ -286,7 +286,7 @@ export default function CourseManagePage() {
                             </div>
                           </div>
 
-                          <form onSubmit={handleAddVideo} className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                          <form onSubmit={handleAddVideo} className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
                             <div className="flex-1">
                               <input
                                 type="text"
@@ -298,7 +298,7 @@ export default function CourseManagePage() {
                                   youtubeUrl: newVideo.moduleId === mod._id ? newVideo.youtubeUrl : "" 
                                 })}
                                 required
-                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                               />
                             </div>
                             <div className="flex-1">
@@ -312,7 +312,7 @@ export default function CourseManagePage() {
                                   youtubeUrl: e.target.value 
                                 })}
                                 required
-                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                               />
                             </div>
                             <Button type="submit" size="sm" loading={addVideoAPI.loading && newVideo.moduleId === mod._id}>
@@ -325,16 +325,16 @@ export default function CourseManagePage() {
                               {mod.videos.map((video: any) => {
                                 const ytId = extractYouTubeId(video.youtubeUrl);
                                 return (
-                                  <div key={video._id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                                  <div key={video._id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 hover:bg-muted transition-colors">
                                     {ytId && (
                                       <img
                                         src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
                                         alt={video.title}
-                                        className="h-12 w-20 rounded object-cover"
+                                        className="h-14 w-24 rounded-md object-cover shrink-0"
                                       />
                                     )}
-                                    <div className="flex-1">
-                                      <p className="font-medium text-foreground">{video.title}</p>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-foreground truncate">{video.title}</p>
                                       <a
                                         href={video.youtubeUrl}
                                         target="_blank"
@@ -348,7 +348,7 @@ export default function CourseManagePage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => setConfirmDelete({ type: "video", id: video._id, name: video.title })}
-                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -370,14 +370,14 @@ export default function CourseManagePage() {
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <h3 className="text-lg font-semibold">Create New Course</h3>
-              <button onClick={() => setShowCreateModal(false)} className="rounded-lg p-1 hover:bg-accent">
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg p-1.5 hover:bg-accent transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleCreateCourse} className="space-y-4">
+            <form onSubmit={handleCreateCourse} className="p-6 space-y-5">
               <Input
                 label="Course Title"
                 value={newCourse.title}

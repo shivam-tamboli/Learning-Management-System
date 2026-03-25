@@ -49,8 +49,8 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-lg">
-        <div className="flex items-center justify-between border-b border-border p-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <CreditCard className="h-5 w-5 text-primary" />
@@ -60,11 +60,11 @@ function PaymentUpdateModal({ registration, onClose, onUpdate }: PaymentUpdateMo
               <p className="text-sm text-muted-foreground">{registration.basicDetails?.firstName} {registration.basicDetails?.lastName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
+          <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent transition-colors">
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <Input
             type="number"
             label="Amount (INR)"
@@ -187,21 +187,23 @@ export default function StudentListPage() {
         </LinkButton>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 p-1 bg-muted rounded-xl w-fit">
         {(["all", "pending", "approved", "rejected"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
               filter === f
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {f.charAt(0).toUpperCase() + f.slice(1)} (
-            {f === "all" 
-              ? registrations.length 
-              : registrations.filter((r) => r.status === f).length})
+            <span className="capitalize">{f}</span>
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10">
+              {f === "all" 
+                ? registrations.length 
+                : registrations.filter((r) => r.status === f).length}
+            </span>
           </button>
         ))}
       </div>
@@ -221,10 +223,10 @@ export default function StudentListPage() {
       ) : (
         <div className="space-y-4">
           {filteredRegistrations.map((reg) => (
-            <Card key={reg._id} className="overflow-hidden">
+            <Card key={reg._id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
               <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between">
                 <div className="flex-1 space-y-3">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
                       <span className="text-lg font-semibold text-primary">
                         {reg.basicDetails?.firstName?.[0] || "?"}
@@ -247,19 +249,19 @@ export default function StudentListPage() {
                   <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <span className="text-muted-foreground">DOB:</span>{" "}
-                      <span className="text-foreground">{reg.basicDetails?.dob || "N/A"}</span>
+                      <span className="text-foreground font-medium">{reg.basicDetails?.dob || "N/A"}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Phone:</span>{" "}
-                      <span className="text-foreground">{reg.contact?.phone || "N/A"}</span>
+                      <span className="text-foreground font-medium">{reg.contact?.phone || "N/A"}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Courses:</span>{" "}
-                      <span className="text-foreground">{reg.courseIds?.length || 0}</span>
+                      <span className="text-foreground font-medium">{reg.courseIds?.length || 0}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Payment:</span>
-                      <span className={reg.payment?.status === "completed" ? "text-emerald-600 font-medium" : "text-amber-600"}>
+                      <span className={reg.payment?.status === "completed" ? "text-emerald-600 font-semibold" : "text-amber-600 font-semibold"}>
                         {reg.payment?.status === "completed" 
                           ? `✓ ₹${reg.payment?.amount || 0}` 
                           : "○ Pending"}
@@ -267,7 +269,7 @@ export default function StudentListPage() {
                       {reg.status === "pending" && (
                         <button
                           onClick={() => setPaymentUpdateReg(reg)}
-                          className="rounded bg-secondary px-2 py-0.5 text-xs hover:bg-accent"
+                          className="rounded-md bg-secondary px-2 py-1 text-xs font-medium hover:bg-accent transition-colors"
                         >
                           Update
                         </button>
@@ -278,14 +280,14 @@ export default function StudentListPage() {
 
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleView(reg._id)}>
-                    <Eye className="mr-1 h-4 w-4" />
+                    <Eye className="mr-1.5 h-4 w-4" />
                     View
                   </Button>
 
                   {reg.status === "pending" && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
-                        <Pencil className="mr-1 h-4 w-4" />
+                        <Pencil className="mr-1.5 h-4 w-4" />
                         Edit
                       </Button>
                       <Button 
@@ -295,7 +297,7 @@ export default function StudentListPage() {
                         disabled={processingId === reg._id || reg.payment?.status !== "completed"}
                         title={reg.payment?.status !== "completed" ? `Payment must be "completed" (currently "${reg.payment?.status || 'pending'}")` : ""}
                       >
-                        <Check className="mr-1 h-4 w-4" />
+                        <Check className="mr-1.5 h-4 w-4" />
                         Approve
                       </Button>
                       <Button 
@@ -304,7 +306,7 @@ export default function StudentListPage() {
                         onClick={() => handleStatusUpdate(reg._id, "reject")}
                         disabled={processingId === reg._id}
                       >
-                        <XCircle className="mr-1 h-4 w-4" />
+                        <XCircle className="mr-1.5 h-4 w-4" />
                         Reject
                       </Button>
                     </>
@@ -313,7 +315,7 @@ export default function StudentListPage() {
                   {(reg.status === "pending" || reg.status === "rejected") && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
-                        <Pencil className="mr-1 h-4 w-4" />
+                        <Pencil className="mr-1.5 h-4 w-4" />
                         Edit
                       </Button>
                       <Button 
@@ -322,7 +324,7 @@ export default function StudentListPage() {
                         onClick={() => handleDelete(reg._id)}
                         disabled={processingId === reg._id}
                       >
-                        <Trash2 className="mr-1 h-4 w-4" />
+                        <Trash2 className="mr-1.5 h-4 w-4" />
                         {processingId === reg._id ? "Deleting..." : "Delete"}
                       </Button>
                     </>
@@ -330,7 +332,7 @@ export default function StudentListPage() {
 
                   {reg.status === "approved" && (
                     <Button variant="outline" size="sm" onClick={() => handleUpdateInfo(reg._id)}>
-                      <Pencil className="mr-1 h-4 w-4" />
+                      <Pencil className="mr-1.5 h-4 w-4" />
                       Update Info
                     </Button>
                   )}
@@ -339,11 +341,11 @@ export default function StudentListPage() {
 
               {reg.status === "approved" && reg.credentials && (
                 <div className="border-t border-border bg-muted/30 px-5 py-3">
-                  <p className="text-xs font-medium text-muted-foreground">Credentials:</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Credentials:</p>
                   <p className="text-sm">
-                    <span className="text-muted-foreground">Email:</span> {reg.credentials.email}
-                    <span className="mx-2 text-muted-foreground">|</span>
-                    <span className="text-muted-foreground">Password:</span> {reg.credentials.password}
+                    <span className="text-muted-foreground">Email:</span> <span className="font-medium">{reg.credentials.email}</span>
+                    <span className="mx-3 text-muted-foreground">|</span>
+                    <span className="text-muted-foreground">Password:</span> <span className="font-medium">{reg.credentials.password}</span>
                   </p>
                 </div>
               )}
