@@ -42,8 +42,11 @@ export default function LoginPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <h1 className={styles.title}>LMS Platform</h1>
-        <p className={styles.subtitle}>Sign in to continue</p>
+        <div className={styles.header}>
+          <span className={styles.icon}>🎓</span>
+          <h1 className={styles.title}>LMS Platform</h1>
+          <p className={styles.subtitle}>Enter your credentials to access your account</p>
+        </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
@@ -73,7 +76,14 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" className={styles.button} disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? (
+              <>
+                <span className={styles.spinner}></span>
+                Signing in...
+              </>
+            ) : (
+              "Sign In"
+            )}
           </button>
         </form>
       </div>
