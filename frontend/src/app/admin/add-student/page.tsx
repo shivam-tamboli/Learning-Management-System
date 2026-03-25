@@ -8,7 +8,7 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
-import { Check, FileText, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+import { Check, FileText, ChevronLeft, ChevronRight, BookOpen, User, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard } from "lucide-react";
 import styles from "./register.module.css";
 
 interface BasicDetails {
