@@ -17,69 +17,72 @@
 
 .stepConnector {
   position: absolute;
-  top: 14px;
-  left: 50%;
-  width: calc(100% - 32px);
+  top: 12px;
+  left: calc(-50% + 12px);
+  width: calc(100% + 24px);
   height: 2px;
   background: hsl(var(--border));
+  transition: background 0.3s ease;
 }
 
 .stepConnectorActive {
   background: hsl(var(--primary));
 }
 
-.stepNumber {
-  width: 32px;
-  height: 32px;
+.stepIndicatorDot {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 0.875rem;
   transition: all 0.3s ease;
-  border: 2px solid transparent;
+  flex-shrink: 0;
 }
 
-.step.active .stepNumber {
+.step.active .stepIndicatorDot {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
 }
 
-.step.current .stepNumber {
+.step.current .stepIndicatorDot {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.2);
-  transform: scale(1.1);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
 }
 
-.step.completed .stepNumber {
+.step.completed .stepIndicatorDot {
   background: hsl(var(--emerald-600));
   color: white;
-  border-color: hsl(var(--emerald-600));
 }
 
 .stepLabel {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   margin-top: 0.5rem;
   text-align: center;
-  max-width: 70px;
+  max-width: 80px;
   line-height: 1.2;
+  font-weight: 400;
+  transition: all 0.3s ease;
 }
 
 .step.active .stepLabel,
 .step.current .stepLabel {
-  color: hsl(var(--primary));
-  font-weight: 500;
+  color: hsl(var(--foreground));
+  font-weight: 600;
 }
 
 .step.completed .stepLabel {
   color: hsl(var(--emerald-600));
+  font-weight: 500;
+}
+
+.step:not(.active):not(.current):not(.completed) .stepLabel {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.8;
 }
 
 .progressBar {

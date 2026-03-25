@@ -390,8 +390,8 @@ export default function AddStudentPage() {
               {step.num > 1 && (
                 <div className={`${styles.stepConnector} ${isActive ? styles.stepConnectorActive : ""}`} />
               )}
-              <div className={styles.stepNumber}>
-                {isCompleted ? <Check className="h-4 w-4" /> : step.num}
+              <div className={styles.stepIndicatorDot}>
+                {isCompleted ? <Check className="h-4 w-4" /> : null}
               </div>
               <div className={styles.stepLabel}>{step.label}</div>
             </div>
