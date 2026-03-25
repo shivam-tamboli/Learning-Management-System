@@ -8,7 +8,6 @@ import {
   Users,
   GraduationCap,
   BookOpen,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -29,7 +28,6 @@ const adminNavItems: NavItem[] = [
   { label: "Students", href: "/admin/student", icon: Users },
   { label: "Add Student", href: "/admin/add-student", icon: GraduationCap },
   { label: "Courses", href: "/admin/course/manage", icon: BookOpen },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 const studentNavItems: NavItem[] = [
