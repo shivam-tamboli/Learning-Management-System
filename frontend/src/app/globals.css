@@ -4,70 +4,94 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #ffffff;
-  --foreground: #1a1a2e;
+  --background: #f8fafc;
+  --foreground: #1e293b;
   --card: #ffffff;
-  --card-foreground: #1a1a2e;
+  --card-foreground: #1e293b;
   --popover: #ffffff;
-  --popover-foreground: #1a1a2e;
-  --primary: #667eea;
+  --popover-foreground: #1e293b;
+  --primary: #6366f1;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #1a1a2e;
-  --muted: #f5f5f5;
-  --muted-foreground: #666666;
-  --accent: #f5f5f5;
-  --accent-foreground: #1a1a2e;
-  --destructive: #dc3545;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #e0e7ff;
+  --accent-foreground: #3730a3;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #667eea;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #6366f1;
   --emerald-50: #ecfdf5;
   --emerald-100: #d1fae5;
   --emerald-200: #a7f3d0;
+  --emerald-500: #10b981;
   --emerald-600: #059669;
   --red-50: #fef2f2;
   --red-200: #fecaca;
   --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
   --blue-200: #bfdbfe;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
   --amber-600: #d97706;
   --amber-100: #fef3c7;
   --amber-50: #fffbeb;
+  --kid-blue: #3b82f6;
+  --kid-green: #22c55e;
+  --kid-yellow: #f59e0b;
+  --kid-coral: #f97316;
+  --kid-purple: #8b5cf6;
+  --kid-pink: #ec4899;
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --card-shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .dark {
   --radius: 0.625rem;
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --popover: #18181b;
-  --popover-foreground: #fafafa;
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
   --primary: #818cf8;
   --primary-foreground: #ffffff;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #312e81;
+  --accent-foreground: #e0e7ff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #27272a;
-  --input: #27272a;
+  --border: #334155;
+  --input: #334155;
   --ring: #818cf8;
   --emerald-50: #ecfdf5;
   --emerald-100: #d1fae5;
   --emerald-200: #a7f3d0;
-  --emerald-600: #10b981;
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
   --red-50: #fef2f2;
   --red-200: #fecaca;
   --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
   --blue-200: #bfdbfe;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
   --amber-600: #f59e0b;
   --amber-100: #fef3c7;
   --amber-50: #fffbeb;
+  --kid-blue: #60a5fa;
+  --kid-green: #34d399;
+  --kid-yellow: #fbbf24;
+  --kid-coral: #fb923c;
+  --kid-purple: #a78bfa;
+  --kid-pink: #f472b6;
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --card-shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
 }
 
 @layer base {
@@ -76,6 +100,12 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .border-3 {
+    border-width: 3px;
   }
 }
 
@@ -112,6 +142,128 @@
     to {
       opacity: 1;
     }
+  }
+
+  .scale-in {
+    animation-name: scaleIn;
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .bounce-in {
+    animation-name: bounceIn;
+  }
+
+  @keyframes bounceIn {
+    0% {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .pulse-border {
+    animation: pulseBorder 2s infinite;
+  }
+
+  @keyframes pulseBorder {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--kid-blue) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--kid-blue) / 0);
+    }
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--kid-blue)), hsl(var(--kid-purple)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+  }
+
+  .progress-gradient {
+    background: linear-gradient(90deg, hsl(var(--kid-blue)), hsl(var(--kid-green)));
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--kid-blue)), hsl(var(--kid-purple)), hsl(var(--kid-pink)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted) / 0.5);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.3);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .float-animation {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .glow-effect {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-effect:hover {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.5);
   }
 }
 

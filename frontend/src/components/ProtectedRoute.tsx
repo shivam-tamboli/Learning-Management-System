@@ -31,6 +31,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return null;
   }
 
+  if (requiredRole === "student" && isAdmin) {
+    router.push("/admin/dashboard");
+    return null;
+  }
+
   return <>{children}</>;
 }
 
@@ -39,7 +44,7 @@ interface GuestRouteProps {
 }
 
 export function GuestRoute({ children }: GuestRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
 
   if (isLoading) {
@@ -51,7 +56,8 @@ export function GuestRoute({ children }: GuestRouteProps) {
   }
 
   if (isAuthenticated) {
-    router.push("/admin/dashboard");
+    const redirectPath = user?.role === "admin" ? "/admin/dashboard" : "/student/dashboard";
+    router.push(redirectPath);
     return null;
   }
 

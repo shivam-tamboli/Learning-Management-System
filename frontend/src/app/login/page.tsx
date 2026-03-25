@@ -3,30 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { authService } from "@/lib/api";
-import { useAPI } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   
   const { login: authLogin } = useAuth();
   const router = useRouter();
   const { success, error: showError } = useToast();
 
-  const loginAPI = useAPI(() => authService.login(email, password));
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      const response = await loginAPI.execute();
-      if (response?.data?.token) {
-        success("Login successful!");
-        await authLogin(email, password);
-        const user = response.data.user;
+      await authLogin(email, password);
+      success("Login successful!");
+      
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
         if (user?.role === "admin") {
           router.push("/admin/dashboard");
         } else {
@@ -34,7 +33,9 @@ export default function LoginPage() {
         }
       }
     } catch (err: any) {
-      showError(loginAPI.error || "Login failed");
+      showError(err?.response?.data?.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,7 +55,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required
-              disabled={loginAPI.loading}
+              disabled={loading}
             />
           </div>
 
@@ -67,12 +68,12 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              disabled={loginAPI.loading}
+              disabled={loading}
             />
           </div>
 
-          <button type="submit" className={styles.button} disabled={loginAPI.loading}>
-            {loginAPI.loading ? "Signing in..." : "Sign In"}
+          <button type="submit" className={styles.button} disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
       </div>
