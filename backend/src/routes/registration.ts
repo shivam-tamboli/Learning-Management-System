@@ -3,6 +3,7 @@ import { getDB } from "../db/index.js";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
 import { rateLimitConfig, rateLimitMessages } from "../config/rateLimit.js";
+import { notificationService } from "../services/notification.js";
 
 function isValidObjectId(id: string): boolean {
   try {
@@ -390,6 +391,15 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           { $set: { studentId: userId } }
         );
 
+        // Send notification to student
+        notificationService.notifyStudent({
+          phone: registration.contact?.phone,
+          name: `${firstName} ${lastName}`.trim(),
+          status: 'approved',
+          email: credentials.email,
+          password: credentials.password
+        }).catch(err => console.error('Notification error:', err));
+
         return reply.send({ 
           message: "Student approved successfully", 
           credentials,
@@ -415,6 +425,13 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           { _id: new ObjectId(id) },
           { $set: { status: "rejected", rejectedAt: new Date() } }
         );
+
+        // Send notification to student
+        notificationService.notifyStudent({
+          phone: registration.contact?.phone,
+          name: `${registration.basicDetails?.firstName} ${registration.basicDetails?.lastName}`.trim(),
+          status: 'rejected'
+        }).catch(err => console.error('Notification error:', err));
         
         return reply.send({ message: "Student rejected", status: "rejected" });
       }
