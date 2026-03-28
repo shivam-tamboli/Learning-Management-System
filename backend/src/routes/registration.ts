@@ -47,12 +47,16 @@ export async function registrationRoutes(fastify: FastifyInstance) {
 
       // Step 1: Create draft with courseIds (NEW - was basicDetails)
       if (step === 1 && courseIds && courseIds.length > 0) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // Draft expires in 7 days
+        
         const registrationData: any = {
           courseIds,
           status: "draft",
           currentStep: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
+          expiresAt: expiresAt,
           basicDetails: {},
           payment: { status: "pending", amount: 0 }
         };

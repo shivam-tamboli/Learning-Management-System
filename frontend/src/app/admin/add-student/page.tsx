@@ -75,6 +75,8 @@ export default function AddStudentPage() {
   const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [registrationStatus, setRegistrationStatus] = useState<string>("");
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<any>(null);
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
     firstName: "",
@@ -122,10 +124,17 @@ export default function AddStudentPage() {
     loadCourses();
     if (isEditing) {
       loadRegistration(editId);
+    } else if (!isProfileMode) {
+      // Check for existing draft
+      const draft = getSavedDraft();
+      if (draft?.registrationId) {
+        setSavedDraft(draft);
+        setShowResumeModal(true);
+      }
     }
   }, []);
 
-  const loadRegistration = async (id: string) => {
+  const loadRegistration = async (id: string, resumeFromStep?: number) => {
     try {
       setLoading(true);
       const res = await registrationService.getById(id);
@@ -147,6 +156,11 @@ export default function AddStudentPage() {
         });
       }
       if (reg.courseIds) setSelectedCourses(reg.courseIds);
+
+      if (resumeFromStep) {
+        const targetStep = resumeFromStep > 1 ? resumeFromStep : 2;
+        setCurrentStep(targetStep);
+      }
     } catch (error) {
       console.error("Failed to load registration:", error);
       showError("Failed to load registration data");
@@ -167,17 +181,108 @@ export default function AddStudentPage() {
     }
   };
 
-  const saveDraftToSession = (regId: string, step: number) => {
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (!registrationId || isEditing || isProfileMode) return;
+
+    const interval = setInterval(async () => {
+      try {
+        let stepData: any = {};
+        let step = currentStep;
+
+        switch (currentStep) {
+          case 2:
+            stepData = basicDetails;
+            break;
+          case 3:
+            stepData = address;
+            break;
+          case 4:
+            stepData = contact;
+            break;
+          case 5:
+            stepData = education;
+            break;
+          case 6:
+            stepData = health;
+            break;
+          case 7:
+            stepData = payment;
+            break;
+          default:
+            return;
+        }
+
+        await registrationService.saveStep({
+          studentId: registrationId,
+          step: step,
+          data: stepData,
+        });
+        saveDraftToStorage(registrationId, currentStep);
+        console.log("Auto-saved at step", currentStep);
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [registrationId, currentStep, basicDetails, address, contact, education, health, payment, isEditing, isProfileMode]);
+
+  const DRAFT_STORAGE_KEY = "registration_draft";
+
+  const saveDraftToStorage = (regId: string, step: number) => {
     try {
       const draftData = {
         registrationId: regId,
         currentStep: step,
         savedAt: new Date().toISOString(),
       };
-      sessionStorage.setItem(`registration_draft_${regId}`, JSON.stringify(draftData));
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
     } catch (error) {
-      console.error("Failed to save draft to session:", error);
+      console.error("Failed to save draft to storage:", error);
     }
+  };
+
+  const getSavedDraft = () => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.error("Failed to get saved draft:", error);
+      return null;
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.error("Failed to clear draft:", error);
+    }
+  };
+
+  const handleResumeDraft = async () => {
+    if (savedDraft?.registrationId) {
+      await loadRegistration(savedDraft.registrationId, savedDraft.currentStep);
+      setShowResumeModal(false);
+    }
+  };
+
+  const handleStartFresh = () => {
+    clearDraft();
+    setSavedDraft(null);
+    setShowResumeModal(false);
+    setRegistrationId(null);
+    setCurrentStep(1);
+    setSelectedCourses([]);
+    setDocuments({ idProof: null, addressProof: null, educationCertificate: null });
+    setUploadedDocIds([]);
+    setBasicDetails({ firstName: "", lastName: "", dob: "", gender: "", email: "" });
+    setAddress({ street: "", city: "", state: "", pincode: "" });
+    setContact({ phone: "", emergencyContact: "", emergencyName: "", relationship: "" });
+    setEducation({ qualification: "", institution: "", year: "", percentage: "" });
+    setHealth({ conditions: "", medications: "", allergies: "" });
+    setPayment({ amount: "", status: "pending", reference: "", notes: "" });
   };
 
   const handleCoursesSubmit = async () => {
@@ -196,7 +301,7 @@ export default function AddStudentPage() {
         });
         const newRegId = registrationRes.data.id;
         setRegistrationId(newRegId);
-        saveDraftToSession(newRegId, 2);
+        saveDraftToStorage(newRegId, 2);
       } catch (error: any) {
         showError(error.response?.data?.message || "Failed to save courses");
         setLoading(false);
@@ -220,7 +325,7 @@ export default function AddStudentPage() {
           step: 2,
           data: basicDetails,
         });
-        saveDraftToSession(registrationId, 3);
+        saveDraftToStorage(registrationId, 3);
       } catch (error: any) {
         console.error("Failed to save basic details:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -242,7 +347,7 @@ export default function AddStudentPage() {
           step: 3,
           data: address,
         });
-        saveDraftToSession(registrationId, 4);
+        saveDraftToStorage(registrationId, 4);
       } catch (error: any) {
         console.error("Failed to save address:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -264,7 +369,7 @@ export default function AddStudentPage() {
           step: 4,
           data: contact,
         });
-        saveDraftToSession(registrationId, 5);
+        saveDraftToStorage(registrationId, 5);
       } catch (error: any) {
         console.error("Failed to save contact:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -286,7 +391,7 @@ export default function AddStudentPage() {
           step: 5,
           data: education,
         });
-        saveDraftToSession(registrationId, 6);
+        saveDraftToStorage(registrationId, 6);
       } catch (error: any) {
         console.error("Failed to save education:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -304,7 +409,7 @@ export default function AddStudentPage() {
           step: 6,
           data: health,
         });
-        saveDraftToSession(registrationId, 7);
+        saveDraftToStorage(registrationId, 7);
       } catch (error: any) {
         console.error("Failed to save health:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -334,7 +439,7 @@ export default function AddStudentPage() {
           step: 7,
           data: payment,
         });
-        saveDraftToSession(registrationId, 8);
+        saveDraftToStorage(registrationId, 8);
       } catch (error) {
         console.error("Failed to save payment:", error);
       }
@@ -394,6 +499,7 @@ export default function AddStudentPage() {
         });
 
         success("Profile updated successfully!");
+        clearDraft();
         router.push("/admin/student");
       } catch (error: any) {
         console.error("Profile update failed:", error);
@@ -428,6 +534,7 @@ export default function AddStudentPage() {
         });
 
         success("Registration updated successfully!");
+        clearDraft();
         router.push("/admin/student");
       } else if (registrationId) {
         // Use existing registration (user completed step-by-step flow)
@@ -470,6 +577,7 @@ export default function AddStudentPage() {
         await uploadDocuments(registrationId);
 
         success("Registration submitted successfully!");
+        clearDraft();
         router.push("/admin/student");
       } else {
         // Fallback: create new registration (shouldn't happen normally)
@@ -514,6 +622,7 @@ export default function AddStudentPage() {
         await uploadDocuments(newRegistrationId);
 
         success("Registration submitted successfully!");
+        clearDraft();
         router.push("/admin/student");
       }
     } catch (error: any) {
@@ -1092,6 +1201,36 @@ export default function AddStudentPage() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Resume Draft Modal
+  if (showResumeModal && savedDraft && !isEditing && !isProfileMode) {
+    const savedDate = savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString() : "unknown time";
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
+          <div className="text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 mx-auto mb-4">
+              <FileText className="h-8 w-8 text-amber-600" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Resume Registration?</h2>
+            <p className="text-muted-foreground mb-2">
+              You have an incomplete registration from:
+            </p>
+            <p className="text-sm font-medium text-foreground mb-6">{savedDate}</p>
+            <div className="space-y-3">
+              <Button onClick={handleResumeDraft} className="w-full">
+                <BookOpen className="mr-2 h-4 w-4" />
+                Resume Registration (Step {savedDraft.currentStep || 1})
+              </Button>
+              <Button variant="outline" onClick={handleStartFresh} className="w-full">
+                Start Fresh
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

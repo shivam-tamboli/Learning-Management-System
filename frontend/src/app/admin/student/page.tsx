@@ -107,7 +107,7 @@ export default function StudentListPage() {
   const { success, error: showError, info } = useToast();
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [filter, setFilter] = useState<"all" | "draft" | "pending" | "approved" | "rejected">("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [paymentUpdateReg, setPaymentUpdateReg] = useState<any | null>(null);
 
@@ -188,7 +188,7 @@ export default function StudentListPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 p-1 bg-muted rounded-xl w-fit">
-        {(["all", "pending", "approved", "rejected"] as const).map((f) => (
+        {(["all", "draft", "pending", "approved", "rejected"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -283,6 +283,24 @@ export default function StudentListPage() {
                     <Eye className="mr-1.5 h-4 w-4" />
                     View
                   </Button>
+
+                  {reg.status === "draft" && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(reg._id)}>
+                        <Pencil className="mr-1.5 h-4 w-4" />
+                        Continue
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleDelete(reg._id)}
+                        disabled={processingId === reg._id}
+                      >
+                        <Trash2 className="mr-1.5 h-4 w-4" />
+                        {processingId === reg._id ? "Deleting..." : "Delete"}
+                      </Button>
+                    </>
+                  )}
 
                   {reg.status === "pending" && (
                     <>

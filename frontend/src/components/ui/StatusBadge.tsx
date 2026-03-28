@@ -12,6 +12,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     active: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
     rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
     inactive: "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300",
+    draft: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   };
 
   const style = statusStyles[status.toLowerCase()] || "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300";
