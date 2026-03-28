@@ -92,17 +92,14 @@ export async function courseRoutes(fastify: FastifyInstance) {
             ? await db.collection("videos").countDocuments({ moduleId: { $in: moduleIds } })
             : 0;
 
-          const completedVideos = totalVideos > 0
-            ? await db.collection("progress").countDocuments({
-                studentId: userId,
-                courseId: courseIdStr,
-                isCompleted: true
-              })
-            : 0;
+          const courseProgress = await db.collection("course_progress").findOne({
+            studentId: userId,
+            courseId: courseIdStr
+          });
 
-          const progress = totalVideos > 0 
-            ? Math.round((completedVideos / totalVideos) * 100) 
-            : 0;
+          const completedVideos = courseProgress?.completedVideos || 0;
+          const totalWatchTime = courseProgress?.totalWatchTime || 0;
+          const progress = courseProgress?.overallProgress || 0;
 
           return {
             _id: course._id.toString(),
@@ -110,6 +107,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
             description: course.description || "",
             totalVideos,
             completedVideos,
+            totalWatchTime,
             progress
           };
         })

@@ -24,15 +24,22 @@ export async function videoRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post<{ Body: { moduleId: string; title: string; youtubeUrl: string } }>(
+  fastify.post<{ Body: { moduleId: string; title: string; youtubeUrl: string; duration?: number; description?: string } }>(
     "/",
     { preHandler: [fastify.authenticate as any, fastify.requireAdmin as any] },
     async (request, reply) => {
-      const { moduleId, title, youtubeUrl } = request.body;
+      const { moduleId, title, youtubeUrl, duration, description } = request.body;
       const db = getDB();
 
-      const result = await db.collection("videos").insertOne({ moduleId, title, youtubeUrl });
-      return { id: result.insertedId.toString(), moduleId, title, youtubeUrl };
+      const result = await db.collection("videos").insertOne({ 
+        moduleId, 
+        title, 
+        youtubeUrl,
+        duration: duration || 0,
+        description: description || "",
+        createdAt: new Date()
+      });
+      return { id: result.insertedId.toString(), moduleId, title, youtubeUrl, duration };
     }
   );
 

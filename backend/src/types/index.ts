@@ -24,6 +24,10 @@ export interface Video {
   moduleId: string;
   title: string;
   youtubeUrl: string;
+  duration?: number;
+  thumbnail?: string;
+  description?: string;
+  order?: number;
 }
 
 export interface Registration {
@@ -93,5 +97,27 @@ export interface Progress {
   studentId: string;
   courseId: string;
   videoId: string;
+  videoDuration?: number;
+  watchTime?: number;
   isCompleted: boolean;
+  completionPercentage?: number;
+  startedAt?: Date;
+  lastWatchedAt?: Date;
+  completedAt?: Date;
+  lastPlayheadPosition?: number;
+}
+
+export interface CourseProgress {
+  _id?: any;
+  studentId: string;
+  courseId: string;
+  totalVideos?: number;
+  completedVideos?: number;
+  totalWatchTime?: number;
+  requiredWatchTime?: number;
+  overallProgress?: number;
+  status?: "in_progress" | "completed" | "dropped";
+  enrolledAt?: Date;
+  completedAt?: Date;
+  lastAccessedAt?: Date;
 }

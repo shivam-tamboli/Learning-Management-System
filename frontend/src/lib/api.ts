@@ -111,6 +111,9 @@ export const paymentService = {
 
 export const progressService = {
   getByCourse: (courseId: string) => api.get(`/progress/${courseId}`),
+  getCourseProgress: (courseId: string) => api.get(`/progress/course/${courseId}`),
+  watchVideo: (data: { courseId: string; videoId: string; watchedTime: number; totalDuration: number }) =>
+    api.post("/progress/video/watch", data),
   complete: (data: { courseId: string; videoId: string }) =>
     api.post("/progress/complete", data),
   getAll: (studentId?: string) =>

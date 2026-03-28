@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { courseService, progressService } from "@/lib/api";
@@ -13,6 +13,15 @@ interface VideoItem {
   _id: string;
   title: string;
   youtubeUrl: string;
+  duration?: number;
+}
+
+interface VideoProgress {
+  videoId: string;
+  watchTime: number;
+  lastPlayheadPosition: number;
+  completionPercentage: number;
+  isCompleted: boolean;
 }
 
 interface Module {
@@ -36,10 +45,14 @@ export default function CourseDetail() {
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
+  const [videoProgress, setVideoProgress] = useState<Map<string, VideoProgress>>(new Map());
   const [loading, setLoading] = useState(true);
   const [markingComplete, setMarkingComplete] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  const [currentVideoTime, setCurrentVideoTime] = useState(0);
+  const playerRef = useRef<any>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadCourse = useCallback(async () => {
     try {
@@ -49,12 +62,25 @@ export default function CourseDetail() {
       ]);
       
       setCourse(courseRes.data);
-      const completed = new Set<string>(
-        progressRes.data
-          .filter((p: any) => p.isCompleted)
-          .map((p: any) => p.videoId)
-      );
+      
+      const progressMap = new Map<string, VideoProgress>();
+      const completed = new Set<string>();
+      
+      progressRes.data.forEach((p: any) => {
+        progressMap.set(p.videoId, {
+          videoId: p.videoId,
+          watchTime: p.watchTime || 0,
+          lastPlayheadPosition: p.lastPlayheadPosition || 0,
+          completionPercentage: p.completionPercentage || 0,
+          isCompleted: p.isCompleted || false
+        });
+        if (p.isCompleted) {
+          completed.add(p.videoId);
+        }
+      });
+      
       setCompletedVideos(completed);
+      setVideoProgress(progressMap);
 
       const allVideos = courseRes.data.modules.flatMap((m: Module) => m.videos);
       const firstIncomplete = allVideos.find((v: VideoItem) => !completed.has(v._id));
@@ -79,6 +105,14 @@ export default function CourseDetail() {
     try {
       await progressService.complete({ courseId, videoId });
       setCompletedVideos(prev => new Set<string>(Array.from(prev).concat(videoId)));
+      setVideoProgress(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(videoId);
+        if (existing) {
+          updated.set(videoId, { ...existing, isCompleted: true, completionPercentage: 100 });
+        }
+        return updated;
+      });
       
       confetti({
         particleCount: 100,
@@ -92,6 +126,116 @@ export default function CourseDetail() {
       setMarkingComplete(null);
     }
   };
+
+  const trackWatchProgress = async (videoId: string, currentTime: number, duration: number) => {
+    try {
+      const result = await progressService.watchVideo({
+        courseId,
+        videoId,
+        watchedTime: Math.floor(currentTime),
+        totalDuration: Math.floor(duration)
+      });
+      
+      setVideoProgress(prev => {
+        const updated = new Map(prev);
+        updated.set(videoId, {
+          videoId,
+          watchTime: Math.floor(currentTime),
+          lastPlayheadPosition: Math.floor(currentTime),
+          completionPercentage: result.data.completionPercentage || 0,
+          isCompleted: result.data.isCompleted || false
+        });
+        return updated;
+      });
+      
+      if (result.data.isCompleted && !completedVideos.has(videoId)) {
+        setCompletedVideos(prev => new Set<string>(Array.from(prev).concat(videoId)));
+      }
+    } catch (error) {
+      console.error("Failed to track watch progress:", error);
+    }
+  };
+
+  const initYouTubePlayer = useCallback((youtubeId: string) => {
+    if (!youtubeId) return;
+    
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    const loadPlayer = () => {
+      if ((window as any).YT && (window as any).YT.Player) {
+        const savedProgress = videoProgress.get(selectedVideo?._id || '');
+        const startTime = savedProgress?.lastPlayheadPosition || 0;
+        
+        playerRef.current = new (window as any).YT.Player('youtube-player', {
+          videoId: youtubeId,
+          playerVars: {
+            rel: 0,
+            start: startTime
+          },
+          events: {
+            onStateChange: (event: any) => {
+              if (event.data === 1) {
+                progressIntervalRef.current = setInterval(() => {
+                  if (playerRef.current && 
+                      typeof playerRef.current.getCurrentTime === 'function' &&
+                      typeof playerRef.current.getDuration === 'function') {
+                    try {
+                      const currentTime = playerRef.current.getCurrentTime();
+                      const duration = playerRef.current.getDuration();
+                      setCurrentVideoTime(currentTime);
+                      
+                      if (selectedVideo && duration > 0) {
+                        trackWatchProgress(selectedVideo._id, currentTime, duration);
+                      }
+                    } catch (e) {
+                      console.error('Error tracking progress:', e);
+                    }
+                  }
+                }, 10000);
+              } else if (event.data === 2 || event.data === 0) {
+                if (progressIntervalRef.current) {
+                  clearInterval(progressIntervalRef.current);
+                }
+                if (playerRef.current && selectedVideo && 
+                    typeof playerRef.current.getCurrentTime === 'function' &&
+                    typeof playerRef.current.getDuration === 'function') {
+                  try {
+                    const currentTime = playerRef.current.getCurrentTime();
+                    const duration = playerRef.current.getDuration();
+                    if (currentTime > 0 && duration > 0) {
+                      trackWatchProgress(selectedVideo._id, currentTime, duration);
+                    }
+                  } catch (e) {
+                    console.error('Error getting video time:', e);
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    };
+
+    if (!(window as any).YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      (window as any).onYouTubeIframeAPIReady = loadPlayer;
+    } else {
+      loadPlayer();
+    }
+  }, [selectedVideo, videoProgress]);
+
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   const getProgressPercentage = () => {
     if (!course) return 0;
@@ -126,6 +270,23 @@ export default function CourseDetail() {
       : null;
   };
 
+  const progress = getProgressPercentage();
+  const totalVideos = course ? course.modules.reduce((acc, mod) => acc + mod.videos.length, 0) : 0;
+  const completedCount = completedVideos.size;
+  const youtubeId = selectedVideo ? extractYouTubeId(selectedVideo.youtubeUrl) : null;
+  const nextVideo = getNextVideo();
+
+  useEffect(() => {
+    if (youtubeId) {
+      initYouTubePlayer(youtubeId);
+    }
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, [youtubeId, initYouTubePlayer]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -149,12 +310,6 @@ export default function CourseDetail() {
       </div>
     );
   }
-
-  const progress = getProgressPercentage();
-  const totalVideos = course.modules.reduce((acc, mod) => acc + mod.videos.length, 0);
-  const completedCount = completedVideos.size;
-  const youtubeId = selectedVideo ? extractYouTubeId(selectedVideo.youtubeUrl) : null;
-  const nextVideo = getNextVideo();
 
   return (
     <div className="space-y-6 animate-in">
@@ -234,16 +389,7 @@ export default function CourseDetail() {
             <>
               <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl ring-4 ring-primary/10">
                 {youtubeId ? (
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
-                    title={selectedVideo.title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0"
-                  />
+                  <div id="youtube-player" className="absolute inset-0" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-white">
                     <Video className="h-16 w-16" />
