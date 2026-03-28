@@ -12,6 +12,14 @@ export async function connectDB(): Promise<Db> {
     await client.connect();
     db = client.db();
     console.log("Connected to MongoDB");
+    
+    // Create TTL index for draft registration expiration (7 days)
+    await db.collection("registrations").createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0, partialFilterExpression: { status: "draft" } }
+    );
+    console.log("TTL index created for draft expiration");
+    
     return db;
   } catch (error) {
     console.error("MongoDB connection error:", error);
