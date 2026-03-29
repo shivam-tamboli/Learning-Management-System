@@ -120,6 +120,18 @@ export default function AddStudentPage() {
     notes: "",
   });
 
+  const hasActualData = (obj: any): boolean => {
+    if (!obj || typeof obj !== 'object') return false;
+    if (Array.isArray(obj)) return obj.length > 0;
+    return Object.keys(obj).some(key => {
+      const value = obj[key];
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') return value.trim().length > 0;
+      if (typeof value === 'object') return hasActualData(value);
+      return true;
+    });
+  };
+
   useEffect(() => {
     loadCourses();
     if (isEditing) {
@@ -318,14 +330,16 @@ export default function AddStudentPage() {
       return;
     }
 
-    if (registrationId && !isEditing) {
+    if (registrationId) {
       try {
         await registrationService.saveStep({
           studentId: registrationId,
           step: 2,
           data: basicDetails,
         });
-        saveDraftToStorage(registrationId, 3);
+        if (!isEditing) {
+          saveDraftToStorage(registrationId, 3);
+        }
       } catch (error: any) {
         console.error("Failed to save basic details:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -340,14 +354,16 @@ export default function AddStudentPage() {
       showError("Please fill in all address fields");
       return;
     }
-    if (registrationId && !isEditing) {
+    if (registrationId) {
       try {
         await registrationService.saveStep({
           studentId: registrationId,
           step: 3,
           data: address,
         });
-        saveDraftToStorage(registrationId, 4);
+        if (!isEditing) {
+          saveDraftToStorage(registrationId, 4);
+        }
       } catch (error: any) {
         console.error("Failed to save address:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -362,14 +378,16 @@ export default function AddStudentPage() {
       showError("Please fill in phone numbers");
       return;
     }
-    if (registrationId && !isEditing) {
+    if (registrationId) {
       try {
         await registrationService.saveStep({
           studentId: registrationId,
           step: 4,
           data: contact,
         });
-        saveDraftToStorage(registrationId, 5);
+        if (!isEditing) {
+          saveDraftToStorage(registrationId, 5);
+        }
       } catch (error: any) {
         console.error("Failed to save contact:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -384,14 +402,16 @@ export default function AddStudentPage() {
       showError("Please fill in education details");
       return;
     }
-    if (registrationId && !isEditing) {
+    if (registrationId) {
       try {
         await registrationService.saveStep({
           studentId: registrationId,
           step: 5,
           data: education,
         });
-        saveDraftToStorage(registrationId, 6);
+        if (!isEditing) {
+          saveDraftToStorage(registrationId, 6);
+        }
       } catch (error: any) {
         console.error("Failed to save education:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -402,14 +422,16 @@ export default function AddStudentPage() {
   };
 
   const handleHealthSubmit = async () => {
-    if (registrationId && !isEditing) {
+    if (registrationId) {
       try {
         await registrationService.saveStep({
           studentId: registrationId,
           step: 6,
           data: health,
         });
-        saveDraftToStorage(registrationId, 7);
+        if (!isEditing) {
+          saveDraftToStorage(registrationId, 7);
+        }
       } catch (error: any) {
         console.error("Failed to save health:", error);
         showError(error.response?.data?.message || "Failed to save. Please try again.");
@@ -424,27 +446,33 @@ export default function AddStudentPage() {
       showError("Please upload all required documents");
       return;
     }
-    setCurrentStep(8);
-  };
 
-  const handlePaymentSubmit = async () => {
-    if (!payment.amount || parseFloat(payment.amount) <= 0) {
-      showError("Please enter a valid payment amount");
-      return;
-    }
-    if (registrationId && !isEditing) {
-      try {
-        await registrationService.saveStep({
+    setSubmitting(true);
+    try {
+      if (registrationId) {
+        const stepResult = await registrationService.saveStep({
           studentId: registrationId,
           step: 7,
-          data: payment,
+          data: {},
         });
-        saveDraftToStorage(registrationId, 8);
-      } catch (error) {
-        console.error("Failed to save payment:", error);
+        
+        if (stepResult.data.status !== "pending") {
+          showError("Failed to submit registration. Status was not updated.");
+          return;
+        }
+        
+        await uploadDocuments(registrationId);
       }
+
+      success("Registration submitted successfully!");
+      clearDraft();
+      router.push("/admin/payment");
+    } catch (error: any) {
+      console.error("Failed to submit registration:", error);
+      showError(error.response?.data?.message || "Failed to submit registration. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setCurrentStep(8);
   };
 
   const handleFileChange = (type: string, file: File | null) => {
@@ -518,20 +546,35 @@ export default function AddStudentPage() {
     setSubmitting(true);
     try {
       if (isEditing && registrationId) {
-        await registrationService.update(registrationId, {
-          basicDetails,
-          address,
-          contact,
-          education,
-          health,
-          payment: {
+        const updateData: any = {
+          courseIds: selectedCourses,
+        };
+
+        if (hasActualData(basicDetails)) {
+          updateData.basicDetails = basicDetails;
+        }
+        if (hasActualData(address)) {
+          updateData.address = address;
+        }
+        if (hasActualData(contact)) {
+          updateData.contact = contact;
+        }
+        if (hasActualData(education)) {
+          updateData.education = education;
+        }
+        if (hasActualData(health)) {
+          updateData.health = health;
+        }
+        if (payment.amount || payment.status || payment.reference || payment.notes) {
+          updateData.payment = {
             amount: parseFloat(payment.amount) || 0,
             status: payment.status,
             reference: payment.reference,
             notes: payment.notes,
-          },
-          courseIds: selectedCourses,
-        });
+          };
+        }
+
+        await registrationService.update(registrationId, updateData);
 
         success("Registration updated successfully!");
         clearDraft();
@@ -568,17 +611,22 @@ export default function AddStudentPage() {
           data: health,
         });
 
-        await registrationService.saveStep({
+        const stepResult = await registrationService.saveStep({
           studentId: registrationId,
           step: 7,
-          data: payment,
+          data: {},
         });
+
+        if (stepResult.data.status !== "pending") {
+          showError("Failed to submit registration. Status was not updated.");
+          return;
+        }
 
         await uploadDocuments(registrationId);
 
         success("Registration submitted successfully!");
         clearDraft();
-        router.push("/admin/student");
+        router.push("/admin/payment");
       } else {
         // Fallback: create new registration (shouldn't happen normally)
         const registrationRes = await registrationService.saveStep({
@@ -613,17 +661,22 @@ export default function AddStudentPage() {
           data: health,
         });
 
-        await registrationService.saveStep({
+        const stepResult = await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 7,
-          data: payment,
+          data: {},
         });
+
+        if (stepResult.data.status !== "pending") {
+          showError("Failed to submit registration. Status was not updated.");
+          return;
+        }
 
         await uploadDocuments(newRegistrationId);
 
         success("Registration submitted successfully!");
         clearDraft();
-        router.push("/admin/student");
+        router.push("/admin/payment");
       }
     } catch (error: any) {
       console.error("Registration failed:", error);
@@ -641,10 +694,9 @@ export default function AddStudentPage() {
     { label: "Education" },
     { label: "Health" },
     { label: "Documents" },
-    { label: "Payment" },
   ];
 
-  const progressPercent = ((currentStep - 1) / 8) * 100;
+  const progressPercent = ((currentStep - 1) / 7) * 100;
 
   const renderStepIndicator = () => (
     <div className="space-y-4">
@@ -1045,68 +1097,8 @@ export default function AddStudentPage() {
         <Button variant="outline" onClick={() => setCurrentStep(6)}>
           <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <Button onClick={handleDocumentsSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderStep8 = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <CreditCard className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Payment Information</h2>
-          <p className="text-sm text-muted-foreground">Record payment details for this registration</p>
-        </div>
-      </div>
-      
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            type="number"
-            label="Amount (INR)"
-            required
-            value={payment.amount}
-            onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
-            placeholder="Enter amount"
-          />
-          <Select
-            label="Payment Status"
-            value={payment.status}
-            onChange={(e) => setPayment({ ...payment, status: e.target.value as "pending" | "completed" })}
-            options={[
-              { value: "pending", label: "Pending" },
-              { value: "completed", label: "Completed" },
-            ]}
-          />
-          <Input
-            label="Reference / Transaction ID"
-            value={payment.reference}
-            onChange={(e) => setPayment({ ...payment, reference: e.target.value })}
-            placeholder="Transaction ID, Receipt No., etc."
-          />
-          <Textarea
-            label="Notes"
-            value={payment.notes}
-            onChange={(e) => setPayment({ ...payment, notes: e.target.value })}
-            placeholder="Any additional notes about the payment"
-            rows={3}
-          />
-        </div>
-      </div>
-      
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(7)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleSubmit}>
-          {submitting 
-            ? (isProfileMode ? "Updating..." : isEditing ? "Updating..." : "Submitting...") 
-            : (isProfileMode ? "Update Profile" : isEditing ? "Update Registration" : "Submit Registration")}
+        <Button onClick={handleDocumentsSubmit} disabled={submitting}>
+          {submitting ? "Submitting..." : "Submit Registration"}
         </Button>
       </div>
     </div>
@@ -1347,7 +1339,6 @@ export default function AddStudentPage() {
             {currentStep === 5 && renderStep5()}
             {currentStep === 6 && renderStep6()}
             {currentStep === 7 && renderStep7()}
-            {currentStep === 8 && renderStep8()}
           </div>
         </>
       )}

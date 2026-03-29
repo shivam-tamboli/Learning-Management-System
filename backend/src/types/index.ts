@@ -75,6 +75,9 @@ export interface Registration {
   createdAt?: Date;
   updatedAt?: Date;
   expiresAt?: Date;
+  previouslyRejected?: boolean;
+  rejectedAt?: Date;
+  approvedAt?: Date;
 }
 
 export interface Document {

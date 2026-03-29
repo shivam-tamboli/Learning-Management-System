@@ -12,7 +12,7 @@ import { LoadingPage } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { useAPI } from "@/hooks";
-import { X, Check, XCircle, Eye, Pencil, Trash2, UserPlus, CreditCard, Users } from "lucide-react";
+import { X, Check, XCircle, Eye, Pencil, Trash2, UserPlus, CreditCard, Users, Clock } from "lucide-react";
 
 interface PaymentUpdateModalProps {
   registration: any;
@@ -238,7 +238,9 @@ export default function StudentListPage() {
                         <h3 className="font-semibold text-foreground">
                           {reg.basicDetails?.firstName} {reg.basicDetails?.lastName}
                         </h3>
-                        <StatusBadge status={reg.status} />
+                        <span title={reg.previouslyRejected && reg.status === "approved" && reg.approvedAt ? `Previously rejected, re-approved on ${new Date(reg.approvedAt).toLocaleDateString()}` : undefined}>
+                          <StatusBadge status={reg.status} reApproved={reg.previouslyRejected} />
+                        </span>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {reg.basicDetails?.email || "Email not provided"}
@@ -308,25 +310,15 @@ export default function StudentListPage() {
                         <Pencil className="mr-1.5 h-4 w-4" />
                         Edit
                       </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => handleStatusUpdate(reg._id, "approve")}
-                        disabled={processingId === reg._id || reg.payment?.status !== "completed"}
-                        title={reg.payment?.status !== "completed" ? `Payment must be "completed" (currently "${reg.payment?.status || 'pending'}")` : ""}
-                      >
-                        <Check className="mr-1.5 h-4 w-4" />
-                        Approve
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleStatusUpdate(reg._id, "reject")}
-                        disabled={processingId === reg._id}
-                      >
-                        <XCircle className="mr-1.5 h-4 w-4" />
-                        Reject
-                      </Button>
+                      <Link href="/admin/payment">
+                        <Button 
+                          size="sm" 
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <CreditCard className="mr-1.5 h-4 w-4" />
+                          Go to Payment
+                        </Button>
+                      </Link>
                     </>
                   )}
 
@@ -355,6 +347,36 @@ export default function StudentListPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+
+              {/* Timestamps Display */}
+              <div className="border-t border-border px-5 py-2 bg-muted/20">
+                {reg.status === "draft" && reg.expiresAt && (
+                  (() => {
+                    const daysLeft = Math.ceil((new Date(reg.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    const isWarning = daysLeft <= 2 && daysLeft > 0;
+                    return (
+                      <div className={`text-sm flex items-center gap-2 ${isWarning ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
+                        <Clock className="h-4 w-4" />
+                        {isWarning ? `⚠️ Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}` : `Expires in ${daysLeft} days`}
+                        {daysLeft <= 0 && <span className="text-red-600">(Expired)</span>}
+                      </div>
+                    );
+                  })()
+                )}
+                {(reg.status === "pending" || reg.status === "approved") && reg.createdAt && (
+                  <div className="text-sm text-muted-foreground">
+                    Registration Started: {new Date(reg.createdAt).toLocaleDateString()}
+                    {reg.status === "approved" && reg.approvedAt && (
+                      <span className="ml-4">Approved: {new Date(reg.approvedAt).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                )}
+                {reg.status === "rejected" && reg.createdAt && (
+                  <div className="text-sm text-muted-foreground">
+                    Registration Started: {new Date(reg.createdAt).toLocaleDateString()}
+                  </div>
+                )}
               </div>
 
               {reg.status === "approved" && reg.credentials && (
