@@ -74,7 +74,20 @@ export async function registrationRoutes(fastify: FastifyInstance) {
 
         const updateData: any = {};
         
-        // Step 2: Save basicDetails (was step 1)
+        // Helper function to check if object has actual data
+        const hasActualData = (obj: any): boolean => {
+          if (!obj || typeof obj !== 'object') return false;
+          if (Array.isArray(obj)) return obj.length > 0;
+          return Object.keys(obj).some(key => {
+            const value = obj[key];
+            if (value === null || value === undefined) return false;
+            if (typeof value === 'string') return value.trim().length > 0;
+            if (typeof value === 'object') return hasActualData(value);
+            return true;
+          });
+        };
+
+        // Step 2: Save basicDetails (was step 1) - merge with existing
         if (step === 2) {
           const email = data?.email?.trim?.();
           if (email) {
@@ -97,26 +110,55 @@ export async function registrationRoutes(fastify: FastifyInstance) {
               });
             }
           }
-          updateData.basicDetails = data;
+          // Merge with existing basicDetails, don't overwrite
+          if (hasActualData(data)) {
+            updateData.basicDetails = { ...(existing.basicDetails || {}), ...data };
+          }
         }
-        // Step 3: Save address (was step 2)
-        else if (step === 3) updateData.address = data;
-        // Step 4: Save contact (was step 3)
-        else if (step === 4) updateData.contact = data;
-        // Step 5: Save education (was step 4)
-        else if (step === 5) updateData.education = data;
-        // Step 6: Save health (was step 5)
-        else if (step === 6) updateData.health = data;
-        // Step 7: Save payment (was step 6) - Also transition to pending
+        // Step 3: Save address - merge with existing
+        else if (step === 3) {
+          if (hasActualData(data)) {
+            updateData.address = { ...(existing.address || {}), ...data };
+          }
+        }
+        // Step 4: Save contact - merge with existing
+        else if (step === 4) {
+          if (hasActualData(data)) {
+            updateData.contact = { ...(existing.contact || {}), ...data };
+          }
+        }
+        // Step 5: Save education - merge with existing
+        else if (step === 5) {
+          if (hasActualData(data)) {
+            updateData.education = { ...(existing.education || {}), ...data };
+          }
+        }
+        // Step 6: Save health - merge with existing
+        else if (step === 6) {
+          if (hasActualData(data)) {
+            updateData.health = { ...(existing.health || {}), ...data };
+          }
+        }
+        // Step 7: Final step - Transition to pending (documents completed)
+        // This used to handle payment, now just marks as pending
         else if (step === 7) {
-          updateData.payment = data;
-          const existing = await db.collection("registrations").findOne({ _id: new ObjectId(studentId) });
-          if (existing && existing.status === "draft") {
+          if (data && Object.keys(data).length > 0) {
+            updateData.payment = { ...(existing.payment || {}), ...data };
+          }
+          const existingReg = await db.collection("registrations").findOne({ _id: new ObjectId(studentId) });
+          // Set to pending unless already approved - ensures draft-completed registrations work
+          if (existingReg && existingReg.status !== "approved" && existingReg.status !== "pending") {
             updateData.status = "pending";
           }
         }
 
         if (Object.keys(updateData).length > 0) {
+          // Reset expiration timer when draft is updated
+          if (existing.status === "draft") {
+            const newExpiresAt = new Date();
+            newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+            updateData.expiresAt = newExpiresAt;
+          }
           updateData.currentStep = step;
           updateData.updatedAt = new Date();
           await db.collection("registrations").updateOne(
@@ -235,21 +277,83 @@ export async function registrationRoutes(fastify: FastifyInstance) {
 
       const updateData: any = {};
       
-      if (basicDetails) updateData.basicDetails = basicDetails;
-      if (address) updateData.address = address;
-      if (contact) updateData.contact = contact;
-      if (education) updateData.education = education;
-      if (health) updateData.health = health;
+      // Helper function to check if object has actual data (not just empty values)
+      const hasActualData = (obj: any): boolean => {
+        if (!obj || typeof obj !== 'object') return false;
+        if (Array.isArray(obj)) return obj.length > 0;
+        return Object.keys(obj).some(key => {
+          const value = obj[key];
+          if (value === null || value === undefined) return false;
+          if (typeof value === 'string') return value.trim().length > 0;
+          if (typeof value === 'object') return hasActualData(value);
+          return true;
+        });
+      };
+
+      // Merge basicDetails - preserve existing values if new values are empty
+      if (basicDetails && hasActualData(basicDetails)) {
+        updateData.basicDetails = { ...(registration.basicDetails || {}), ...basicDetails };
+      } else if (basicDetails && registration.basicDetails) {
+        // If basicDetails exists but has no actual data, keep existing
+        updateData.basicDetails = registration.basicDetails;
+      }
+
+      // Merge address
+      if (address && hasActualData(address)) {
+        updateData.address = { ...(registration.address || {}), ...address };
+      } else if (address && registration.address) {
+        updateData.address = registration.address;
+      }
+
+      // Merge contact
+      if (contact && hasActualData(contact)) {
+        updateData.contact = { ...(registration.contact || {}), ...contact };
+      } else if (contact && registration.contact) {
+        updateData.contact = registration.contact;
+      }
+
+      // Merge education
+      if (education && hasActualData(education)) {
+        updateData.education = { ...(registration.education || {}), ...education };
+      } else if (education && registration.education) {
+        updateData.education = registration.education;
+      }
+
+      // Merge health
+      if (health && hasActualData(health)) {
+        updateData.health = { ...(registration.health || {}), ...health };
+      } else if (health && registration.health) {
+        updateData.health = registration.health;
+      }
+
+      // Handle payment - always merge
       if (payment) {
         updateData.payment = { ...registration.payment, ...payment };
-        if (payment.status === "completed" && registration.status === "draft") {
+        if (registration.status === "draft") {
           updateData.status = "pending";
         }
       }
-      if (courseIds) updateData.courseIds = courseIds;
+
+      if (courseIds && courseIds.length > 0) {
+        updateData.courseIds = courseIds;
+      }
 
       if (registration.status === "draft" && !updateData.status && updateData.payment) {
         updateData.status = "pending";
+      }
+
+      // Reset expiration timer when draft is updated
+      if (registration.status === "draft") {
+        const newExpiresAt = new Date();
+        newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+        updateData.expiresAt = newExpiresAt;
+      }
+
+      // Reset rejected status to pending when rejected student is edited
+      if (registration.status === "rejected") {
+        updateData.status = "pending";
+        updateData.previouslyRejected = true;
+        updateData.rejectedAt = null;
       }
 
       updateData.updatedAt = new Date();
@@ -318,12 +422,12 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ message: "Student is already approved" });
         }
 
-        if (registration.status === "rejected") {
-          return reply.status(400).send({ message: "Cannot approve a rejected registration. Create a new one." });
+        if (registration.userId && !registration.previouslyRejected) {
+          return reply.status(400).send({ message: "Registration has already been approved. Cannot approve again." });
         }
 
-        if (registration.userId) {
-          return reply.status(400).send({ message: "Registration has already been approved. Cannot approve again." });
+        if (registration.status === "rejected" && !registration.previouslyRejected) {
+          return reply.status(400).send({ message: "Cannot approve a rejected registration. Please edit and update first." });
         }
 
         if (!registration.payment || registration.payment.status !== "completed") {
@@ -333,9 +437,28 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           });
         }
 
-        const firstName = registration.basicDetails?.firstName || "Student";
-        const lastName = registration.basicDetails?.lastName || "";
-        const userEmail = registration.basicDetails?.email?.trim();
+        // Validate required fields before approval
+        if (!registration.basicDetails?.firstName?.trim()) {
+          return reply.status(400).send({ 
+            message: "Cannot approve: First name is missing. Please edit the registration and add the required information."
+          });
+        }
+
+        if (!registration.basicDetails?.email?.trim()) {
+          return reply.status(400).send({ 
+            message: "Cannot approve: Email is missing. Please edit the registration and add the required information."
+          });
+        }
+
+        if (!registration.contact?.phone?.trim()) {
+          return reply.status(400).send({ 
+            message: "Cannot approve: Phone number is missing. Please edit the registration and add the required information."
+          });
+        }
+
+        const firstName = registration.basicDetails.firstName.trim();
+        const lastName = registration.basicDetails.lastName?.trim() || "";
+        const userEmail = registration.basicDetails.email.trim();
 
         let userId: string;
         let credentials: { email: string; password: string };

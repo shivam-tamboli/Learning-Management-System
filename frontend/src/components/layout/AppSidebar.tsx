@@ -13,6 +13,7 @@ import {
   X,
   Sun,
   Moon,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/components/ui/ThemeProvider";
@@ -27,6 +28,7 @@ const adminNavItems: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Students", href: "/admin/student", icon: Users },
   { label: "Add Student", href: "/admin/add-student", icon: GraduationCap },
+  { label: "Payment", href: "/admin/payment", icon: CreditCard },
   { label: "Courses", href: "/admin/course/manage", icon: BookOpen },
 ];
 

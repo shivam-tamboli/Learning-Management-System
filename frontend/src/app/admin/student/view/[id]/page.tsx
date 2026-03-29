@@ -325,7 +325,7 @@ export default function ViewRegistrationPage() {
           </CardContent>
         </Card>
 
-        {(registration.status === "approved" || registration.status === "rejected") && registration.createdAt && (
+        {registration.status === "approved" && registration.createdAt && (
           <Card className="overflow-hidden">
             <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -334,9 +334,9 @@ export default function ViewRegistrationPage() {
               <CardTitle className="text-base">Timeline</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Created At</p>
+                  <p className="text-sm font-medium text-muted-foreground">Registration Started</p>
                   <p className="mt-0.5">{new Date(registration.createdAt).toLocaleString()}</p>
                 </div>
                 {registration.approvedAt && (
@@ -345,10 +345,11 @@ export default function ViewRegistrationPage() {
                     <p className="mt-0.5">{new Date(registration.approvedAt).toLocaleString()}</p>
                   </div>
                 )}
-                {registration.rejectedAt && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Rejected At</p>
-                    <p className="mt-0.5">{new Date(registration.rejectedAt).toLocaleString()}</p>
+                {registration.previouslyRejected && (
+                  <div className="sm:col-span-2 mt-2">
+                    <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                      Previously rejected, re-approved on {new Date(registration.approvedAt).toLocaleDateString()}
+                    </p>
                   </div>
                 )}
               </div>
