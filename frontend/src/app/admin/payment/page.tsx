@@ -269,7 +269,14 @@ export default function PaymentPage() {
                   <Button
                     size="sm"
                     className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
-                    onClick={() => handleStatusUpdate(reg._id, "approve")}
+                    onClick={() => {
+                      if (reg.payment?.status !== "completed") {
+                        if (!confirm("Warning: Payment is not completed. Are you sure you want to approve this registration?")) {
+                          return;
+                        }
+                      }
+                      handleStatusUpdate(reg._id, "approve");
+                    }}
                   >
                     <Check className="mr-2 h-4 w-4" />
                     Approve

@@ -6,14 +6,25 @@ import { useAuth } from "@/lib/auth";
 import { courseService, progressService } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { MultiLangPlayer } from "@/components/players/MultiLangPlayer";
 import { BookOpen, PlayCircle, CheckCircle, ChevronLeft, ChevronRight, Video, Trophy, ArrowRight, Sparkles, Circle, CheckCircle2, Zap, Star, Clock } from "lucide-react";
 import confetti from "canvas-confetti";
+
+interface AudioTrack {
+  id: string;
+  language: string;
+  languageCode: string;
+  filePath: string;
+}
 
 interface VideoItem {
   _id: string;
   title: string;
   youtubeUrl: string;
   duration?: number;
+  videoType?: "youtube" | "demo-local";
+  localVideoPath?: string;
+  audioTracks?: AudioTrack[];
 }
 
 interface VideoProgress {
@@ -273,7 +284,8 @@ export default function CourseDetail() {
   const progress = getProgressPercentage();
   const totalVideos = course ? course.modules.reduce((acc, mod) => acc + mod.videos.length, 0) : 0;
   const completedCount = completedVideos.size;
-  const youtubeId = selectedVideo ? extractYouTubeId(selectedVideo.youtubeUrl) : null;
+  const videoType = selectedVideo?.videoType || "youtube";
+  const youtubeId = videoType === "youtube" && selectedVideo ? extractYouTubeId(selectedVideo.youtubeUrl) : null;
   const nextVideo = getNextVideo();
 
   useEffect(() => {
@@ -388,8 +400,25 @@ export default function CourseDetail() {
           {selectedVideo ? (
             <>
               <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl ring-4 ring-primary/10">
-                {youtubeId ? (
+                {videoType === "youtube" && youtubeId ? (
                   <div id="youtube-player" className="absolute inset-0" />
+                ) : videoType === "demo-local" && selectedVideo?.localVideoPath ? (
+                  <MultiLangPlayer
+                    videoPath={selectedVideo.localVideoPath}
+                    audioTracks={selectedVideo.audioTracks || []}
+                    defaultLanguage="en"
+                    onProgress={(time, dur) => {
+                      if (selectedVideo) {
+                        trackWatchProgress(selectedVideo._id, time, dur);
+                      }
+                    }}
+                    onComplete={() => {
+                      if (selectedVideo) {
+                        handleVideoComplete(selectedVideo._id);
+                      }
+                    }}
+                    startTime={videoProgress.get(selectedVideo?._id || '')?.lastPlayheadPosition || 0}
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-white">
                     <Video className="h-16 w-16" />

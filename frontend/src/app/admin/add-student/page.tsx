@@ -456,7 +456,8 @@ export default function AddStudentPage() {
           data: {},
         });
         
-        if (stepResult.data.status !== "pending") {
+        const status = stepResult.data?.status;
+        if (status !== "pending" && status !== "draft") {
           showError("Failed to submit registration. Status was not updated.");
           return;
         }
@@ -617,7 +618,8 @@ export default function AddStudentPage() {
           data: {},
         });
 
-        if (stepResult.data.status !== "pending") {
+        const status = stepResult.data?.status;
+        if (status !== "pending" && status !== "draft") {
           showError("Failed to submit registration. Status was not updated.");
           return;
         }
@@ -640,24 +642,30 @@ export default function AddStudentPage() {
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 2,
-          data: address,
+          data: basicDetails,
         });
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 3,
-          data: contact,
+          data: address,
         });
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 4,
-          data: education,
+          data: contact,
         });
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 5,
+          data: education,
+        });
+
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 6,
           data: health,
         });
 
@@ -667,7 +675,8 @@ export default function AddStudentPage() {
           data: {},
         });
 
-        if (stepResult.data.status !== "pending") {
+        const status = stepResult.data?.status;
+        if (status !== "pending" && status !== "draft") {
           showError("Failed to submit registration. Status was not updated.");
           return;
         }

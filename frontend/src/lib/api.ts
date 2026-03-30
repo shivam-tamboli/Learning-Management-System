@@ -76,14 +76,28 @@ export const moduleService = {
 
 export const videoService = {
   getByModule: (moduleId: string) => api.get(`/videos?moduleId=${moduleId}`),
-  create: (data: { moduleId: string; title: string; youtubeUrl: string }) =>
-    api.post("/videos", data),
+  create: (data: { 
+    moduleId: string; 
+    title: string; 
+    youtubeUrl?: string;
+    videoType?: "youtube" | "demo-local";
+    localVideoPath?: string;
+    audioTracks?: { id: string; language: string; languageCode: string; filePath: string }[];
+  }) => api.post("/videos", data),
+  update: (id: string, data: {
+    title?: string;
+    youtubeUrl?: string;
+    videoType?: "youtube" | "demo-local";
+    localVideoPath?: string;
+    audioTracks?: { id: string; language: string; languageCode: string; filePath: string }[];
+  }) => api.put(`/videos/${id}`, data),
   delete: (id: string) => api.delete(`/videos/${id}`),
 };
 
 export const registrationService = {
   getAll: () => api.get("/registration"),
   getById: (id: string) => api.get(`/registration/${id}`),
+  getMyRegistration: () => api.get("/registration/me"),
   saveStep: (data: any) => api.post("/registration/step", data),
   updateStudent: (id: string, studentId: string) =>
     api.put(`/registration/${id}/student`, { studentId }),

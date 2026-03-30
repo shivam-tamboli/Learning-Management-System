@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { pipeline } from "stream";
 import { promisify } from "util";
+import { validateDocument, mapFrontendToDocumentType, DocumentType } from "../lib/documentValidator.js";
 
 const pump = promisify(pipeline);
 
@@ -94,21 +95,40 @@ export async function documentRoutes(fastify: FastifyInstance) {
         filePath: `/uploads/documents/${fileName}`,
         mimeType: file.mimetype,
         size: file.file.bytesRead || 0,
-        uploadedAt: new Date()
+        uploadedAt: new Date(),
+        verified: false
       };
       
       if (studentId) docData.studentId = studentId;
       if (registrationId) docData.registrationId = registrationId;
 
+      const backendType = mapFrontendToDocumentType(type);
+      const validation = validateDocument(
+        { size: docData.size, mimetype: file.mimetype, originalname: file.filename },
+        backendType
+      );
+      
+      if (!validation.valid) {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        return reply.status(400).send({ 
+          success: false,
+          message: validation.errors.join(", ") 
+        });
+      }
+
       const result = await db.collection("documents").insertOne(docData);
 
       return { 
+        success: true,
         id: result.insertedId.toString(), 
         studentId, 
         registrationId,
         type, 
         filePath: `/uploads/documents/${fileName}`,
-        fileName: file.filename
+        fileName: file.filename,
+        verified: false
       };
     }
   );

@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { useAPI } from "@/hooks";
-import { Plus, ChevronDown, ChevronUp, Trash2, BookOpen, X } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Trash2, BookOpen, X, Video, Edit } from "lucide-react";
 
 interface Course {
   _id: string;
@@ -29,17 +29,27 @@ export default function CourseManagePage() {
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [courseDetails, setCourseDetails] = useState<any>(null);
   const [newModule, setNewModule] = useState({ courseId: "", title: "" });
-  const [newVideo, setNewVideo] = useState({ moduleId: "", title: "", youtubeUrl: "" });
+  const [newVideo, setNewVideo] = useState({ 
+    moduleId: "", 
+    title: "", 
+    youtubeUrl: "",
+    videoType: "youtube" as "youtube" | "demo-local",
+    localVideoPath: "",
+    audioTracks: [] as { id: string; language: string; languageCode: string; filePath: string }[]
+  });
+  const [addingAudioTrack, setAddingAudioTrack] = useState(false);
+  const [newAudioTrack, setNewAudioTrack] = useState({ language: "", languageCode: "", filePath: "" });
   
   const [confirmDelete, setConfirmDelete] = useState<{
     type: "course" | "module" | "video" | null;
     id: string | null;
     name: string;
   }>({ type: null, id: null, name: "" });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
 
   const createCourseAPI = useAPI(() => courseService.create(newCourse));
   const addModuleAPI = useAPI(() => courseService.createModule(newModule));
-  const addVideoAPI = useAPI(() => courseService.createVideo(newVideo));
 
   useEffect(() => {
     loadCourses();
@@ -120,17 +130,121 @@ export default function CourseManagePage() {
     e.preventDefault();
 
     try {
-      await addVideoAPI.execute();
-      success("Video added successfully");
-      setNewVideo({ moduleId: newVideo.moduleId, title: "", youtubeUrl: "" });
+      if (isEditMode && editingVideoId) {
+        const updateData: any = {
+          title: newVideo.title,
+          videoType: newVideo.videoType,
+        };
+        if (newVideo.videoType === "youtube") {
+          updateData.youtubeUrl = newVideo.youtubeUrl;
+          updateData.localVideoPath = "";
+          updateData.audioTracks = [];
+        } else {
+          updateData.localVideoPath = newVideo.localVideoPath;
+          updateData.audioTracks = newVideo.audioTracks;
+          updateData.youtubeUrl = "";
+        }
+        await videoService.update(editingVideoId, updateData);
+        success("Video updated successfully");
+        setIsEditMode(false);
+        setEditingVideoId(null);
+      } else {
+        const videoData = {
+          moduleId: newVideo.moduleId,
+          title: newVideo.title,
+          videoType: newVideo.videoType,
+          ...(newVideo.videoType === "youtube" 
+            ? { youtubeUrl: newVideo.youtubeUrl }
+            : { 
+                localVideoPath: newVideo.localVideoPath,
+                audioTracks: newVideo.audioTracks
+              }
+          )
+        };
+        await videoService.create(videoData);
+        success("Video added successfully");
+      }
+      setNewVideo({ 
+        moduleId: newVideo.moduleId, 
+        title: "", 
+        youtubeUrl: "",
+        videoType: "youtube",
+        localVideoPath: "",
+        audioTracks: []
+      });
       if (courseDetails) {
         const res = await courseService.getById(courseDetails._id);
         setCourseDetails(res.data);
       }
     } catch (error) {
-      console.error("Failed to add video:", error);
-      showError("Failed to add video");
+      console.error("Failed to save video:", error);
+      showError("Failed to save video");
     }
+  };
+
+  const handleEditVideo = (video: any) => {
+    setIsEditMode(true);
+    setEditingVideoId(video._id);
+    setNewVideo({
+      moduleId: video.moduleId,
+      title: video.title,
+      youtubeUrl: video.youtubeUrl || "",
+      videoType: video.videoType || "youtube",
+      localVideoPath: video.localVideoPath || "",
+      audioTracks: video.audioTracks || []
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditingVideoId(null);
+    setNewVideo({
+      moduleId: "",
+      title: "",
+      youtubeUrl: "",
+      videoType: "youtube",
+      localVideoPath: "",
+      audioTracks: []
+    });
+  };
+
+  const normalizeLanguageCode = (code: string): string => {
+    const codeMap: Record<string, string> = {
+      'english': 'en', 'eng': 'en', 'en-us': 'en', 'en-uk': 'en',
+      'hindi': 'hi', 'hin': 'hi',
+      'marathi': 'mr', 'mar': 'mr',
+      'tamil': 'ta', 'tam': 'ta',
+      'telugu': 'te', 'tel': 'te',
+      'kannada': 'kn', 'kan': 'kn',
+      'malayalam': 'ml', 'mal': 'ml',
+      'gujarati': 'gu', 'guj': 'gu',
+      'punjabi': 'pa', 'pan': 'pa',
+      'bengali': 'bn', 'ben': 'bn',
+    };
+    const normalized = code.toLowerCase().trim();
+    return codeMap[normalized] || normalized;
+  };
+
+  const handleAddAudioTrack = () => {
+    if (newAudioTrack.language && newAudioTrack.languageCode && newAudioTrack.filePath) {
+      const normalizedCode = normalizeLanguageCode(newAudioTrack.languageCode);
+      setNewVideo(prev => ({
+        ...prev,
+        audioTracks: [
+          ...prev.audioTracks,
+          { id: Date.now().toString(), language: newAudioTrack.language, languageCode: normalizedCode, filePath: newAudioTrack.filePath }
+        ]
+      }));
+      setNewAudioTrack({ language: "", languageCode: "", filePath: "" });
+      setAddingAudioTrack(false);
+    }
+  };
+
+  const handleRemoveAudioTrack = (id: string) => {
+    setNewVideo(prev => ({
+      ...prev,
+      audioTracks: prev.audioTracks.filter(t => t.id !== id)
+    }));
   };
 
   const handleDeleteModule = async () => {
@@ -286,37 +400,133 @@ export default function CourseManagePage() {
                             </div>
                           </div>
 
-                          <form onSubmit={handleAddVideo} className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-                            <div className="flex-1">
-                              <input
-                                type="text"
-                                placeholder="Video title"
-                                value={newVideo.moduleId === mod._id ? newVideo.title : ""}
-                                onChange={(e) => setNewVideo({ 
-                                  moduleId: mod._id, 
-                                  title: e.target.value, 
-                                  youtubeUrl: newVideo.moduleId === mod._id ? newVideo.youtubeUrl : "" 
+                          <form onSubmit={handleAddVideo} className="mb-4 space-y-2">
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <input
+                                  type="text"
+                                  placeholder="Video title"
+                                  value={newVideo.moduleId === mod._id ? newVideo.title : ""}
+                                  onChange={(e) => setNewVideo({ 
+                                    ...newVideo,
+                                    moduleId: mod._id, 
+                                    title: e.target.value
+                                  })}
+                                  required
+                                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                />
+                              </div>
+                              <select
+                                value={newVideo.moduleId === mod._id ? newVideo.videoType : "youtube"}
+                                onChange={(e) => setNewVideo({
+                                  ...newVideo,
+                                  moduleId: mod._id,
+                                  videoType: e.target.value as "youtube" | "demo-local"
                                 })}
-                                required
-                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                              />
+                                className="rounded-lg border border-input bg-background px-2 py-2.5 text-sm"
+                              >
+                                <option value="youtube">YouTube</option>
+                                <option value="demo-local">Local</option>
+                              </select>
                             </div>
-                            <div className="flex-1">
+
+                            {newVideo.moduleId === mod._id && newVideo.videoType === "youtube" && (
                               <input
                                 type="url"
                                 placeholder="YouTube URL"
-                                value={newVideo.moduleId === mod._id ? newVideo.youtubeUrl : ""}
+                                value={newVideo.youtubeUrl}
                                 onChange={(e) => setNewVideo({ 
-                                  moduleId: mod._id, 
-                                  title: newVideo.moduleId === mod._id ? newVideo.title : "", 
+                                  ...newVideo, 
                                   youtubeUrl: e.target.value 
                                 })}
                                 required
                                 className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                               />
-                            </div>
-                            <Button type="submit" size="sm" loading={addVideoAPI.loading && newVideo.moduleId === mod._id}>
-                              Add Video
+                            )}
+
+                            {newVideo.moduleId === mod._id && newVideo.videoType === "demo-local" && (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  placeholder="Local video path (e.g., /videos/demo/lesson1.mp4)"
+                                  value={newVideo.localVideoPath}
+                                  onChange={(e) => setNewVideo({ 
+                                    ...newVideo, 
+                                    localVideoPath: e.target.value 
+                                  })}
+                                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm"
+                                />
+                                
+                                <div className="text-xs text-muted-foreground">
+                                  Audio Tracks ({newVideo.audioTracks.length})
+                                </div>
+                                
+                                {newVideo.audioTracks.map((track) => (
+                                  <div key={track.id} className="flex items-center gap-2 text-xs bg-muted p-2 rounded">
+                                    <span className="flex-1">{track.language} ({track.languageCode})</span>
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleRemoveAudioTrack(track.id)}
+                                      className="text-red-500"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+
+                                {addingAudioTrack ? (
+                                  <div className="space-y-2 p-2 border rounded">
+                                    <input
+                                      type="text"
+                                      placeholder="Language"
+                                      value={newAudioTrack.language}
+                                      onChange={(e) => setNewAudioTrack({ ...newAudioTrack, language: e.target.value })}
+                                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Code"
+                                      value={newAudioTrack.languageCode}
+                                      onChange={(e) => setNewAudioTrack({ ...newAudioTrack, languageCode: e.target.value })}
+                                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Audio path"
+                                      value={newAudioTrack.filePath}
+                                      onChange={(e) => setNewAudioTrack({ ...newAudioTrack, filePath: e.target.value })}
+                                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs"
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button type="button" size="sm" onClick={handleAddAudioTrack} className="flex-1 text-xs">
+                                        Add
+                                      </Button>
+                                      <Button type="button" size="sm" variant="outline" onClick={() => setAddingAudioTrack(false)} className="text-xs">
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Button 
+                                    type="button" 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => setAddingAudioTrack(true)}
+                                    className="w-full text-xs"
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" /> Add Audio Track
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+
+                            {isEditMode && editingVideoId && newVideo.moduleId === mod._id && (
+                              <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit} className="w-full mb-2">
+                                Cancel Edit
+                              </Button>
+                            )}
+                            <Button type="submit" size="sm" disabled={newVideo.moduleId !== mod._id}>
+                              {isEditMode ? "Update Video" : "Add Video"}
                             </Button>
                           </form>
 
@@ -344,6 +554,14 @@ export default function CourseManagePage() {
                                         Watch on YouTube
                                       </a>
                                     </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditVideo(video)}
+                                      className="text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"

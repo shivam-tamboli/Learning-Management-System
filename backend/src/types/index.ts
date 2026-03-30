@@ -19,6 +19,13 @@ export interface Module {
   title: string;
 }
 
+export interface AudioTrack {
+  id: string;
+  language: string;
+  languageCode: string;
+  filePath: string;
+}
+
 export interface Video {
   _id?: any;
   moduleId: string;
@@ -28,6 +35,9 @@ export interface Video {
   thumbnail?: string;
   description?: string;
   order?: number;
+  videoType?: "youtube" | "demo-local";
+  localVideoPath?: string;
+  audioTracks?: AudioTrack[];
 }
 
 export interface Registration {
