@@ -140,15 +140,29 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           }
         }
         // Step 7: Final step - Transition to pending (documents completed)
-        // This used to handle payment, now just marks as pending
+        // Documents must be uploaded BEFORE calling step 7 to set status to pending
         else if (step === 7) {
           if (data && Object.keys(data).length > 0) {
-            updateData.payment = { ...(existing.payment || {}), ...data };
-          }
-          const existingReg = await db.collection("registrations").findOne({ _id: new ObjectId(studentId) });
-          // Set to pending unless already approved - ensures draft-completed registrations work
-          if (existingReg && existingReg.status !== "approved" && existingReg.status !== "pending") {
-            updateData.status = "pending";
+            // Handle payment data if provided
+            if (data.payment) {
+              updateData.payment = { ...(existing.payment || {}), ...data.payment };
+            }
+            // Handle documentsComplete flag - only set status if documents verified
+            if (data.documentsComplete === true) {
+              const existingReg = await db.collection("registrations").findOne({ _id: new ObjectId(studentId) });
+              // Verify documents exist for this registration
+              const docsCount = await db.collection("documents").countDocuments({ registrationId: studentId });
+              if (docsCount >= 4) {
+                if (existingReg && existingReg.status !== "approved" && existingReg.status !== "pending") {
+                  updateData.status = "pending";
+                }
+              } else {
+                return reply.status(400).send({ 
+                  success: false,
+                  message: "Required documents not uploaded. Please upload all 4 documents before submitting." 
+                });
+              }
+            }
           }
         }
 
@@ -167,7 +181,15 @@ export async function registrationRoutes(fastify: FastifyInstance) {
           );
         }
 
-        return reply.send({ message: "Step data saved", id: studentId, status: updateData.status });
+        const updatedReg = await db.collection("registrations").findOne({ _id: new ObjectId(studentId) });
+        
+        // Always return explicit success structure
+        return reply.send({ 
+          success: true, 
+          message: "Step data saved", 
+          id: studentId, 
+          status: updatedReg?.status 
+        });
       }
 
       return reply.status(400).send({ message: "Invalid request. Step 1 requires courseIds, other steps require studentId" });

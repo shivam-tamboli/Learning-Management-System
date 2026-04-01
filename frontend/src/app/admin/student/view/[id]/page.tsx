@@ -9,7 +9,7 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { LoadingPage } from "@/components/ui/Loading";
 import { useToast } from "@/components/ui/Toast";
-import { ArrowLeft, User, MapPin, Phone, GraduationCap, Heart, FileText, CreditCard, BookOpen, Clock } from "lucide-react";
+import { ArrowLeft, User, MapPin, Phone, GraduationCap, Heart, FileText, CreditCard, BookOpen, Clock, Eye, X } from "lucide-react";
 
 export default function ViewRegistrationPage() {
   const params = useParams();
@@ -21,6 +21,7 @@ export default function ViewRegistrationPage() {
   const [courses, setCourses] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewDoc, setPreviewDoc] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -56,6 +57,10 @@ export default function ViewRegistrationPage() {
       "ID Proof": "ID Proof",
       "Address Proof": "Address Proof",
       "Education Certificate": "Education Certificate",
+      "Photo": "Photo",
+      "Signature": "Signature",
+      "Admission Form - Front": "Admission Form - Front",
+      "Admission Form - Back": "Admission Form - Back",
     };
     return labels[type] || type;
   };
@@ -143,7 +148,7 @@ export default function ViewRegistrationPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-2 lg:col-span-4">
                 <p className="text-sm font-medium text-muted-foreground">Street Address</p>
-                <p className="mt-0.5">{registration.address?.street || "N/A"}</p>
+                <p className="mt-0.5">{registration.address?.addressLine1 || registration.address?.street || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">City</p>
@@ -200,20 +205,16 @@ export default function ViewRegistrationPage() {
           <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Highest Qualification</p>
-                <p className="capitalize mt-0.5">{registration.education?.qualification || "N/A"}</p>
+                <p className="text-sm font-medium text-muted-foreground">School Name</p>
+                <p className="mt-0.5">{registration.education?.schoolName || registration.education?.institution || "N/A"}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Institution/Board</p>
-                <p className="mt-0.5">{registration.education?.institution || "N/A"}</p>
+                <p className="text-sm font-medium text-muted-foreground">Standard</p>
+                <p className="mt-0.5">{registration.education?.standard || registration.education?.qualification || "N/A"}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Year of Passing</p>
-                <p className="mt-0.5">{registration.education?.year || "N/A"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Percentage/CGPA</p>
-                <p className="mt-0.5">{registration.education?.percentage || "N/A"}</p>
+                <p className="text-sm font-medium text-muted-foreground">City</p>
+                <p className="mt-0.5">{registration.education?.city || "N/A"}</p>
               </div>
             </div>
           </CardContent>
@@ -261,6 +262,13 @@ export default function ViewRegistrationPage() {
                       <p className="font-medium">{getDocTypeLabel(doc.type)}</p>
                       <p className="text-sm text-muted-foreground">{doc.fileName}</p>
                     </div>
+                    <button
+                      onClick={() => setPreviewDoc(doc)}
+                      className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </button>
                   </div>
                 ))}
               </div>
@@ -357,6 +365,37 @@ export default function ViewRegistrationPage() {
           </Card>
         )}
       </div>
+
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-xl bg-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="text-lg font-semibold text-foreground">{getDocTypeLabel(previewDoc.type)}</h3>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="rounded-lg p-2 hover:bg-muted"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]">
+              {previewDoc.fileUrl?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                <img
+                  src={previewDoc.fileUrl}
+                  alt={getDocTypeLabel(previewDoc.type)}
+                  className="max-w-full h-auto mx-auto"
+                />
+              ) : (
+                <iframe
+                  src={previewDoc.fileUrl}
+                  className="w-full h-[70vh] border-0"
+                  title={getDocTypeLabel(previewDoc.type)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
