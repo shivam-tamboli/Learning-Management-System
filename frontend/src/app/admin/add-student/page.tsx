@@ -4,40 +4,71 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registrationService, courseService, documentService } from "@/lib/api";
+import {
+  TITLE_OPTIONS,
+  GENDER_OPTIONS,
+  MOTHER_TONGUE_OPTIONS,
+  ADDRESS_TYPE_OPTIONS,
+  COUNTRIES,
+  INDIAN_STATES,
+  getDistrictsByState,
+  getTalukasByDistrict,
+  getCitiesByState,
+} from "@/lib/dropdownData";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
-import { Check, FileText, ChevronLeft, ChevronRight, BookOpen, User, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard } from "lucide-react";
+import { Check, FileText, ChevronLeft, ChevronRight, BookOpen, User, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard, Eye, X } from "lucide-react";
 import styles from "./register.module.css";
 
 interface BasicDetails {
+  title: string;
   firstName: string;
+  middleName: string;
   lastName: string;
+  fullName: string;
   dob: string;
+  age: string;
   gender: string;
+  fatherName: string;
+  motherName: string;
+  motherTongue: string;
+  nationality: string;
   email: string;
 }
 
 interface Address {
-  street: string;
+  addressType: string;
+  addressLine1: string;
+  addressLine2: string;
+  suburb: string;
+  landmark: string;
   city: string;
+  taluka: string;
+  district: string;
   state: string;
   pincode: string;
+  country: string;
 }
 
 interface Contact {
   phone: string;
+  whatsappNumber: string;
+  sameAsMobile: boolean;
   emergencyContact: string;
   emergencyName: string;
   relationship: string;
 }
 
 interface Education {
-  qualification: string;
-  institution: string;
-  year: string;
-  percentage: string;
+  schoolName: string;
+  standard: string;
+  city: string;
+  qualification?: string;
+  institution?: string;
+  year?: string;
+  percentage?: string;
 }
 
 interface Health {
@@ -68,43 +99,61 @@ export default function AddStudentPage() {
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [documents, setDocuments] = useState<{ [key: string]: File | null }>({
-    idProof: null,
-    addressProof: null,
-    educationCertificate: null,
+    photo: null,
+    signature: null,
+    admissionFormFront: null,
+    admissionFormBack: null,
   });
   const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [registrationStatus, setRegistrationStatus] = useState<string>("");
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [savedDraft, setSavedDraft] = useState<any>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ file: File | null; name: string } | null>(null);
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
+    title: "",
     firstName: "",
+    middleName: "",
     lastName: "",
+    fullName: "",
     dob: "",
+    age: "",
     gender: "",
+    fatherName: "",
+    motherName: "",
+    motherTongue: "",
+    nationality: "India",
     email: "",
   });
 
   const [address, setAddress] = useState<Address>({
-    street: "",
+    addressType: "Permanent",
+    addressLine1: "",
+    addressLine2: "",
+    suburb: "",
+    landmark: "",
     city: "",
+    taluka: "",
+    district: "",
     state: "",
     pincode: "",
+    country: "India",
   });
 
   const [contact, setContact] = useState<Contact>({
     phone: "",
+    whatsappNumber: "",
+    sameAsMobile: false,
     emergencyContact: "",
     emergencyName: "",
     relationship: "",
   });
 
   const [education, setEducation] = useState<Education>({
-    qualification: "",
-    institution: "",
-    year: "",
-    percentage: "",
+    schoolName: "",
+    standard: "",
+    city: "",
   });
 
   const [health, setHealth] = useState<Health>({
@@ -287,14 +336,60 @@ export default function AddStudentPage() {
     setRegistrationId(null);
     setCurrentStep(1);
     setSelectedCourses([]);
-    setDocuments({ idProof: null, addressProof: null, educationCertificate: null });
+    setDocuments({ photo: null, signature: null, admissionFormFront: null, admissionFormBack: null });
     setUploadedDocIds([]);
-    setBasicDetails({ firstName: "", lastName: "", dob: "", gender: "", email: "" });
-    setAddress({ street: "", city: "", state: "", pincode: "" });
-    setContact({ phone: "", emergencyContact: "", emergencyName: "", relationship: "" });
-    setEducation({ qualification: "", institution: "", year: "", percentage: "" });
-    setHealth({ conditions: "", medications: "", allergies: "" });
-    setPayment({ amount: "", status: "pending", reference: "", notes: "" });
+    setBasicDetails({
+      title: "",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      fullName: "",
+      dob: "",
+      age: "",
+      gender: "",
+      fatherName: "",
+      motherName: "",
+      motherTongue: "",
+      nationality: "India",
+      email: "",
+    });
+    setAddress({
+      addressType: "Permanent",
+      addressLine1: "",
+      addressLine2: "",
+      suburb: "",
+      landmark: "",
+      city: "",
+      taluka: "",
+      district: "",
+      state: "",
+      pincode: "",
+      country: "India",
+    });
+    setContact({
+      phone: "",
+      whatsappNumber: "",
+      sameAsMobile: false,
+      emergencyContact: "",
+      emergencyName: "",
+      relationship: "",
+    });
+    setEducation({
+      schoolName: "",
+      standard: "",
+      city: "",
+    });
+    setHealth({
+      conditions: "",
+      medications: "",
+      allergies: "",
+    });
+    setPayment({
+      amount: "",
+      status: "pending",
+      reference: "",
+      notes: "",
+    });
   };
 
   const handleCoursesSubmit = async () => {
@@ -350,8 +445,8 @@ export default function AddStudentPage() {
   };
 
   const handleAddressSubmit = async () => {
-    if (!address.street || !address.city || !address.state || !address.pincode) {
-      showError("Please fill in all address fields");
+    if (!address.addressLine1 || !address.pincode) {
+      showError("Please fill in address line 1 and pincode");
       return;
     }
     if (registrationId) {
@@ -398,8 +493,8 @@ export default function AddStudentPage() {
   };
 
   const handleEducationSubmit = async () => {
-    if (!education.qualification || !education.institution || !education.year) {
-      showError("Please fill in education details");
+    if (!education.schoolName || !education.standard) {
+      showError("Please fill in school name and standard");
       return;
     }
     if (registrationId) {
@@ -442,37 +537,105 @@ export default function AddStudentPage() {
   };
 
   const handleDocumentsSubmit = async () => {
-    if (!documents.idProof || !documents.addressProof || !documents.educationCertificate) {
+    if (!documents.photo || !documents.signature || !documents.admissionFormFront || !documents.admissionFormBack) {
       showError("Please upload all required documents");
       return;
     }
 
+    if (!registrationId) {
+      showError("Registration ID missing. Please complete previous steps first.");
+      return;
+    }
+
     setSubmitting(true);
+    
     try {
-      if (registrationId) {
-        const stepResult = await registrationService.saveStep({
-          studentId: registrationId,
-          step: 7,
-          data: {},
-        });
-        
-        if (stepResult.data.status !== "pending") {
-          showError("Failed to submit registration. Status was not updated.");
-          return;
-        }
-        
-        await uploadDocuments(registrationId);
+      // STEP 1: Upload ALL documents FIRST - before updating status
+      const uploadedIds = await uploadDocumentsWithValidation(registrationId);
+      
+      // STEP 2: Verify upload succeeded
+      if (!uploadedIds || uploadedIds.length < 4) {
+        throw new Error("Not all documents were uploaded. Please try again.");
+      }
+      
+      // STEP 3: Now update status to pending (with document verification flag)
+      const stepResult = await registrationService.saveStep({
+        studentId: registrationId,
+        step: 7,
+        data: { documentsComplete: true, documentIds: uploadedIds },
+      });
+      
+      // STEP 4: Verify response and status
+      const responseData = stepResult?.data;
+      
+      if (!responseData) {
+        throw new Error("No response from server. Please try again.");
+      }
+      
+      // Check for explicit failure from backend
+      if (responseData.success === false) {
+        throw new Error(responseData.message || "Failed to submit registration");
+      }
+      
+      const newStatus = responseData?.status;
+      if (!newStatus || (newStatus !== "pending" && newStatus !== "approved")) {
+        throw new Error("Failed to update registration status. Please try again.");
       }
 
+      // STEP 5: Success
       success("Registration submitted successfully!");
       clearDraft();
       router.push("/admin/payment");
     } catch (error: any) {
       console.error("Failed to submit registration:", error);
-      showError(error.response?.data?.message || "Failed to submit registration. Please try again.");
+      showError(error.response?.data?.message || error.message || "Failed to submit registration. Please try again.");
     } finally {
+      // ALWAYS reset loading state
       setSubmitting(false);
     }
+  };
+
+  // Upload documents with proper error handling - throws on failure
+  const uploadDocumentsWithValidation = async (registrationId: string): Promise<string[]> => {
+    const uploadedIds: string[] = [];
+    const docTypes = ["photo", "signature", "admissionFormFront", "admissionFormBack"];
+    const docNames: Record<string, string> = {
+      photo: "Photo",
+      signature: "Signature",
+      admissionFormFront: "Admission Form - Front",
+      admissionFormBack: "Admission Form - Back",
+    };
+
+    for (const type of docTypes) {
+      const file = documents[type as keyof typeof documents];
+      if (!file) {
+        throw new Error(`Missing required document: ${docNames[type]}`);
+      }
+      
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("registrationId", registrationId);
+        formData.append("type", docNames[type]);
+
+        const res = await documentService.upload(formData);
+        
+        if (!res || (!res.id && !res._id)) {
+          throw new Error(`Failed to upload ${docNames[type]}`);
+        }
+        
+        uploadedIds.push(res.id || res._id);
+      } catch (error: any) {
+        console.error(`Failed to upload ${type}:`, error);
+        throw new Error(`Failed to upload ${docNames[type]}: ${error.message || "Unknown error"}`);
+      }
+    }
+
+    if (uploadedIds.length !== 4) {
+      throw new Error("Not all documents were uploaded successfully. Please try again.");
+    }
+    
+    return uploadedIds;
   };
 
   const handleFileChange = (type: string, file: File | null) => {
@@ -485,35 +648,6 @@ export default function AddStudentPage() {
         ? prev.filter((id) => id !== courseId)
         : [...prev, courseId]
     );
-  };
-
-  const uploadDocuments = async (registrationId: string): Promise<string[]> => {
-    const uploadedIds: string[] = [];
-    const docTypes = ["idProof", "addressProof", "educationCertificate"];
-    const docNames: Record<string, string> = {
-      idProof: "ID Proof",
-      addressProof: "Address Proof",
-      educationCertificate: "Education Certificate",
-    };
-
-    for (const type of docTypes) {
-      const file = documents[type as keyof typeof documents];
-      if (file) {
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("registrationId", registrationId);
-          formData.append("type", docNames[type]);
-
-          const res = await documentService.upload(formData);
-          uploadedIds.push(res.id || res._id);
-        } catch (error) {
-          console.error(`Failed to upload ${type}:`, error);
-        }
-      }
-    }
-
-    return uploadedIds;
   };
 
   const handleSubmit = async () => {
@@ -581,6 +715,7 @@ export default function AddStudentPage() {
         router.push("/admin/student");
       } else if (registrationId) {
         // Use existing registration (user completed step-by-step flow)
+        // Save all steps first, then upload documents, then finalize
         await registrationService.saveStep({
           studentId: registrationId,
           step: 2,
@@ -611,18 +746,27 @@ export default function AddStudentPage() {
           data: health,
         });
 
+        // STEP 1: Upload documents FIRST
+        const uploadedIds = await uploadDocumentsWithValidation(registrationId);
+        
+        // STEP 2: Now call step 7 with document verification
         const stepResult = await registrationService.saveStep({
           studentId: registrationId,
           step: 7,
-          data: {},
+          data: { documentsComplete: true, documentIds: uploadedIds },
         });
 
-        if (stepResult.data.status !== "pending") {
-          showError("Failed to submit registration. Status was not updated.");
-          return;
+        // STEP 3: Verify response properly
+        const responseData = stepResult?.data;
+        
+        if (responseData?.success === false) {
+          throw new Error(responseData.message || "Failed to submit registration");
         }
-
-        await uploadDocuments(registrationId);
+        
+        const newStatus = responseData?.status;
+        if (!newStatus || (newStatus !== "pending" && newStatus !== "approved")) {
+          throw new Error("Failed to update registration status");
+        }
 
         success("Registration submitted successfully!");
         clearDraft();
@@ -632,47 +776,66 @@ export default function AddStudentPage() {
         const registrationRes = await registrationService.saveStep({
           courseIds: selectedCourses,
           step: 1,
-          data: basicDetails,
+          data: {},
         });
 
-        const newRegistrationId = registrationRes.data.id;
+        const newRegistrationId = registrationRes.data?.id;
+        
+        if (!newRegistrationId) {
+          throw new Error("Failed to create registration");
+        }
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 2,
-          data: address,
+          data: basicDetails,
         });
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 3,
-          data: contact,
+          data: address,
         });
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 4,
-          data: education,
+          data: contact,
         });
 
         await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 5,
+          data: education,
+        });
+
+        await registrationService.saveStep({
+          studentId: newRegistrationId,
+          step: 6,
           data: health,
         });
 
+        // STEP 1: Upload documents FIRST
+        const uploadedIds = await uploadDocumentsWithValidation(newRegistrationId);
+        
+        // STEP 2: Now call step 7 with document verification
         const stepResult = await registrationService.saveStep({
           studentId: newRegistrationId,
           step: 7,
-          data: {},
+          data: { documentsComplete: true, documentIds: uploadedIds },
         });
 
-        if (stepResult.data.status !== "pending") {
-          showError("Failed to submit registration. Status was not updated.");
-          return;
+        // STEP 3: Verify response properly
+        const responseData = stepResult?.data;
+        
+        if (responseData?.success === false) {
+          throw new Error(responseData.message || "Failed to submit registration");
         }
-
-        await uploadDocuments(newRegistrationId);
+        
+        const newStatus = responseData?.status;
+        if (!newStatus || (newStatus !== "pending" && newStatus !== "approved")) {
+          throw new Error("Failed to update registration status");
+        }
 
         success("Registration submitted successfully!");
         clearDraft();
@@ -735,13 +898,25 @@ export default function AddStudentPage() {
       </div>
       
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Select
+            label="Title"
+            value={basicDetails.title}
+            onChange={(e) => setBasicDetails({ ...basicDetails, title: e.target.value })}
+            options={[{ value: "", label: "Select Title" }, ...TITLE_OPTIONS]}
+          />
           <Input
             label="First Name"
             required
             value={basicDetails.firstName}
             onChange={(e) => setBasicDetails({ ...basicDetails, firstName: e.target.value })}
             placeholder="Enter first name"
+          />
+          <Input
+            label="Middle Name"
+            value={basicDetails.middleName}
+            onChange={(e) => setBasicDetails({ ...basicDetails, middleName: e.target.value })}
+            placeholder="Enter middle name"
           />
           <Input
             label="Last Name"
@@ -751,25 +926,58 @@ export default function AddStudentPage() {
             placeholder="Enter last name"
           />
           <Input
+            label="Full Name"
+            required
+            value={basicDetails.fullName}
+            onChange={(e) => setBasicDetails({ ...basicDetails, fullName: e.target.value })}
+            placeholder="Enter full name"
+          />
+          <Input
             type="date"
             label="Date of Birth"
             required
             value={basicDetails.dob}
             onChange={(e) => setBasicDetails({ ...basicDetails, dob: e.target.value })}
           />
+          <Input
+            label="Age"
+            value={basicDetails.age}
+            onChange={(e) => setBasicDetails({ ...basicDetails, age: e.target.value })}
+            placeholder="Enter age"
+          />
           <Select
             label="Gender"
             required
             value={basicDetails.gender}
             onChange={(e) => setBasicDetails({ ...basicDetails, gender: e.target.value })}
-            options={[
-              { value: "", label: "Select Gender" },
-              { value: "male", label: "Male" },
-              { value: "female", label: "Female" },
-              { value: "other", label: "Other" },
-            ]}
+            options={GENDER_OPTIONS}
           />
-          <div className="sm:col-span-2">
+          <Input
+            label="Father Name"
+            value={basicDetails.fatherName}
+            onChange={(e) => setBasicDetails({ ...basicDetails, fatherName: e.target.value })}
+            placeholder="Enter father name"
+          />
+          <Input
+            label="Mother Name"
+            required
+            value={basicDetails.motherName}
+            onChange={(e) => setBasicDetails({ ...basicDetails, motherName: e.target.value })}
+            placeholder="Enter mother name"
+          />
+          <Select
+            label="Mother Tongue"
+            value={basicDetails.motherTongue}
+            onChange={(e) => setBasicDetails({ ...basicDetails, motherTongue: e.target.value })}
+            options={MOTHER_TONGUE_OPTIONS}
+          />
+          <Select
+            label="Nationality"
+            value={basicDetails.nationality}
+            onChange={(e) => setBasicDetails({ ...basicDetails, nationality: e.target.value })}
+            options={[{ value: "", label: "Select Nationality" }, ...COUNTRIES.slice(0, 50)]}
+          />
+          <div className="sm:col-span-2 lg:col-span-3">
             <Input
               type="email"
               label="Email Address"
@@ -793,7 +1001,12 @@ export default function AddStudentPage() {
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep3 = () => {
+    const districts = getDistrictsByState(address.state);
+    const talukas = address.district ? getTalukasByDistrict(address.district) : [];
+    const cities = getCitiesByState(address.state);
+
+    return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -806,38 +1019,80 @@ export default function AddStudentPage() {
       </div>
       
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Input
-              label="Street Address"
-              required
-              value={address.street}
-              onChange={(e) => setAddress({ ...address, street: e.target.value })}
-              placeholder="House No., Street Name, Area"
-            />
-          </div>
-          <Input
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Select
+            label="Address Type"
+            value={address.addressType}
+            onChange={(e) => setAddress({ ...address, addressType: e.target.value })}
+            options={ADDRESS_TYPE_OPTIONS}
+          />
+          <Select
+            label="Country"
+            value={address.country}
+            onChange={(e) => setAddress({ ...address, country: e.target.value })}
+            options={[{ value: "", label: "Select Country" }, ...COUNTRIES.slice(0, 50)]}
+          />
+          <Select
+            label="State"
+            value={address.state}
+            onChange={(e) => setAddress({ ...address, state: e.target.value, district: "", taluka: "", city: "" })}
+            options={[{ value: "", label: "Select State" }, ...INDIAN_STATES]}
+          />
+          <Select
+            label="District"
+            value={address.district}
+            onChange={(e) => setAddress({ ...address, district: e.target.value, taluka: "" })}
+            options={[{ value: "", label: "Select District" }, ...districts]}
+          />
+          <Select
+            label="Taluka"
+            value={address.taluka}
+            onChange={(e) => setAddress({ ...address, taluka: e.target.value })}
+            options={[{ value: "", label: "Select Taluka" }, ...talukas]}
+          />
+          <Select
             label="City"
-            required
             value={address.city}
             onChange={(e) => setAddress({ ...address, city: e.target.value })}
-            placeholder="City"
+            options={[{ value: "", label: "Select City" }, ...cities]}
           />
           <Input
-            label="State"
-            required
-            value={address.state}
-            onChange={(e) => setAddress({ ...address, state: e.target.value })}
-            placeholder="State"
-          />
-          <Input
-            label="Pincode"
+            label="Pin Code"
             required
             value={address.pincode}
             onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
             placeholder="6-digit pincode"
             maxLength={6}
           />
+          <Input
+            label="Suburb"
+            value={address.suburb}
+            onChange={(e) => setAddress({ ...address, suburb: e.target.value })}
+            placeholder="Suburb"
+          />
+          <Input
+            label="Landmark"
+            value={address.landmark}
+            onChange={(e) => setAddress({ ...address, landmark: e.target.value })}
+            placeholder="Near landmark"
+          />
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Input
+              label="Address Line 1"
+              required
+              value={address.addressLine1}
+              onChange={(e) => setAddress({ ...address, addressLine1: e.target.value })}
+              placeholder="House No., Street Name, Area"
+            />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Input
+              label="Address Line 2"
+              value={address.addressLine2}
+              onChange={(e) => setAddress({ ...address, addressLine2: e.target.value })}
+              placeholder="Village/Town, Colony details"
+            />
+          </div>
         </div>
       </div>
       
@@ -850,7 +1105,8 @@ export default function AddStudentPage() {
         </Button>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderStep4 = () => (
     <div className="space-y-6">
@@ -875,6 +1131,30 @@ export default function AddStudentPage() {
             placeholder="10-digit phone number"
             maxLength={10}
           />
+          <div>
+            <Input
+              type="tel"
+              label="WhatsApp Number"
+              value={contact.sameAsMobile ? contact.phone : contact.whatsappNumber}
+              onChange={(e) => {
+                if (!contact.sameAsMobile) {
+                  setContact({ ...contact, whatsappNumber: e.target.value });
+                }
+              }}
+              placeholder="10-digit WhatsApp number"
+              maxLength={10}
+              disabled={contact.sameAsMobile}
+            />
+            <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={contact.sameAsMobile}
+                onChange={(e) => setContact({ ...contact, sameAsMobile: e.target.checked })}
+                className="h-4 w-4 rounded border-border"
+              />
+              Same as Mobile Number
+            </label>
+          </div>
           <Input
             type="tel"
             label="Emergency Contact Number"
@@ -925,46 +1205,43 @@ export default function AddStudentPage() {
         </div>
         <div>
           <h2 className="text-xl font-semibold text-foreground">Education History</h2>
-          <p className="text-sm text-muted-foreground">Academic qualifications and achievements</p>
+          <p className="text-sm text-muted-foreground">Current education details</p>
         </div>
       </div>
       
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select
-            label="Highest Qualification"
+          <Input
+            label="School Name"
             required
-            value={education.qualification}
-            onChange={(e) => setEducation({ ...education, qualification: e.target.value })}
+            value={education.schoolName}
+            onChange={(e) => setEducation({ ...education, schoolName: e.target.value })}
+            placeholder="Enter school name"
+          />
+          <Select
+            label="Standard"
+            required
+            value={education.standard}
+            onChange={(e) => setEducation({ ...education, standard: e.target.value })}
             options={[
-              { value: "", label: "Select Qualification" },
-              { value: "10th", label: "10th Pass" },
-              { value: "12th", label: "12th Pass" },
-              { value: "diploma", label: "Diploma" },
-              { value: "graduation", label: "Graduation" },
-              { value: "postgraduation", label: "Post Graduation" },
+              { value: "", label: "Select Standard" },
+              { value: "5th", label: "5th" },
+              { value: "6th", label: "6th" },
+              { value: "7th", label: "7th" },
+              { value: "8th", label: "8th" },
+              { value: "9th", label: "9th" },
+              { value: "10th", label: "10th" },
+              { value: "11th", label: "11th" },
+              { value: "12th", label: "12th" },
+              { value: "Undergraduate", label: "Undergraduate" },
+              { value: "Postgraduate", label: "Postgraduate" },
             ]}
           />
           <Input
-            label="Institution/Board"
-            required
-            value={education.institution}
-            onChange={(e) => setEducation({ ...education, institution: e.target.value })}
-            placeholder="School/University name"
-          />
-          <Input
-            label="Year of Passing"
-            required
-            value={education.year}
-            onChange={(e) => setEducation({ ...education, year: e.target.value })}
-            placeholder="e.g., 2024"
-            maxLength={4}
-          />
-          <Input
-            label="Percentage/CGPA"
-            value={education.percentage}
-            onChange={(e) => setEducation({ ...education, percentage: e.target.value })}
-            placeholder="e.g., 85% or 8.5 CGPA"
+            label="City"
+            value={education.city}
+            onChange={(e) => setEducation({ ...education, city: e.target.value })}
+            placeholder="Enter city"
           />
         </div>
       </div>
@@ -1042,9 +1319,10 @@ export default function AddStudentPage() {
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           {[
-            { key: "idProof", title: "ID Proof", subtitle: "Aadhaar Card, PAN Card, Passport, or Voter ID" },
-            { key: "addressProof", title: "Address Proof", subtitle: "Utility Bill, Bank Statement, or Rent Agreement" },
-            { key: "educationCertificate", title: "Education Certificate", subtitle: "Highest qualification certificate or marksheet" },
+            { key: "photo", title: "Photo", subtitle: "Passport size photograph (JPG, PNG)" },
+            { key: "signature", title: "Signature", subtitle: "Your signature on white paper (JPG, PNG)" },
+            { key: "admissionFormFront", title: "Admission Form - Front", subtitle: "First page of filled admission form" },
+            { key: "admissionFormBack", title: "Admission Form - Back", subtitle: "Second page of filled admission form" },
           ].map((doc) => (
             <div key={doc.key} className={`flex flex-col gap-3 rounded-lg border p-4 transition-all ${
               documents[doc.key as keyof typeof documents]
@@ -1084,9 +1362,18 @@ export default function AddStudentPage() {
                 {documents[doc.key as keyof typeof documents] ? "Change File" : "Upload Document"}
               </label>
               {documents[doc.key as keyof typeof documents] && (
-                <p className="text-xs text-emerald-600 font-medium truncate">
-                  {(documents[doc.key as keyof typeof documents])?.name}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-emerald-600 font-medium truncate">
+                    {(documents[doc.key as keyof typeof documents])?.name}
+                  </p>
+                  <button
+                    onClick={() => setPreviewDoc({ file: documents[doc.key as keyof typeof documents], name: doc.title })}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Eye className="h-3 w-3" />
+                    View
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -1290,8 +1577,8 @@ export default function AddStudentPage() {
               />
               <Input
                 label="Street Address"
-                value={address.street}
-                onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                value={address.addressLine1}
+                onChange={(e) => setAddress({ ...address, addressLine1: e.target.value })}
                 placeholder="House No., Street Name, Area"
               />
               <Input
@@ -1341,6 +1628,37 @@ export default function AddStudentPage() {
             {currentStep === 7 && renderStep7()}
           </div>
         </>
+      )}
+
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-xl bg-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="text-lg font-semibold text-foreground">{previewDoc.name}</h3>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="rounded-lg p-2 hover:bg-muted"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]">
+              {previewDoc.file && previewDoc.file.type.startsWith("image/") ? (
+                <img
+                  src={URL.createObjectURL(previewDoc.file)}
+                  alt={previewDoc.name}
+                  className="max-w-full h-auto mx-auto"
+                />
+              ) : (
+                <iframe
+                  src={previewDoc.file ? URL.createObjectURL(previewDoc.file) : ""}
+                  className="w-full h-[70vh] border-0"
+                  title={previewDoc.name}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

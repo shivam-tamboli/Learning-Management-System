@@ -32,10 +32,17 @@ interface ProfileData {
       gender?: string;
     };
     address: {
-      street?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      suburb?: string;
+      landmark?: string;
       city?: string;
       state?: string;
       pincode?: string;
+      district?: string;
+      taluka?: string;
+      country?: string;
+      addressType?: string;
     };
     contact: {
       phone?: string;
@@ -44,6 +51,9 @@ interface ProfileData {
       relationship?: string;
     };
     education: {
+      schoolName?: string;
+      standard?: string;
+      city?: string;
       qualification?: string;
       institution?: string;
       year?: string;
@@ -247,7 +257,7 @@ export default function StudentProfile() {
           <SectionCard title="Address" icon={<MapPin className="h-5 w-5 text-primary" />}>
             <InfoRow 
               label="Street Address" 
-              value={reg.address.street} 
+              value={reg.address.addressLine1 || reg.address.addressLine2 || "—"} 
               icon={<MapPin className="h-4 w-4" />} 
             />
             <InfoRow 
@@ -268,22 +278,20 @@ export default function StudentProfile() {
         {reg?.education && (
           <SectionCard title="Education" icon={<GraduationCap className="h-5 w-5 text-primary" />}>
             <InfoRow 
-              label="Qualification" 
-              value={reg.education.qualification} 
+              label="School Name" 
+              value={reg.education.schoolName || reg.education.institution || "—"} 
               icon={<GraduationCap className="h-4 w-4" />} 
             />
             <InfoRow 
-              label="Institution" 
-              value={reg.education.institution} 
+              label="Standard" 
+              value={reg.education.standard || reg.education.qualification} 
             />
-            <InfoRow 
-              label="Year of Passing" 
-              value={reg.education.year} 
-            />
-            <InfoRow 
-              label="Percentage/CGPA" 
-              value={reg.education.percentage} 
-            />
+            {reg.education.city && (
+              <InfoRow 
+                label="City" 
+                value={reg.education.city} 
+              />
+            )}
           </SectionCard>
         )}
 
