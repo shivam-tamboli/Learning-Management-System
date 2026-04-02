@@ -10,6 +10,8 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LoadingPage } from "@/components/ui/Loading";
 import { useToast } from "@/components/ui/Toast";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { useAPI } from "@/hooks";
 import { X, Check, XCircle, Eye, CreditCard, Search } from "lucide-react";
 
@@ -110,6 +112,17 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingPayment, setEditingPayment] = useState<any>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    variant: "default" | "destructive";
+    action: "approve" | "reject";
+    id: string;
+  }>({ open: false, title: "", description: "", variant: "default", action: "reject", id: "" });
 
   const loadRegistrations = async () => {
     try {
@@ -127,6 +140,46 @@ export default function PaymentPage() {
   useEffect(() => {
     loadRegistrations();
   }, []);
+
+  const handleApprove = (id: string) => {
+    const reg = registrations.find(r => r._id === id);
+    setConfirmDialog({
+      open: true,
+      title: "Approve Registration",
+      description: `Are you sure you want to approve the registration for ${reg?.basicDetails?.firstName} ${reg?.basicDetails?.lastName}?`,
+      variant: "default",
+      action: "approve",
+      id,
+    });
+  };
+
+  const handleReject = (id: string) => {
+    const reg = registrations.find(r => r._id === id);
+    setConfirmDialog({
+      open: true,
+      title: "Reject Registration",
+      description: `Are you sure you want to reject the registration for ${reg?.basicDetails?.firstName} ${reg?.basicDetails?.lastName}?`,
+      variant: "destructive",
+      action: "reject",
+      id,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    const { action, id } = confirmDialog;
+    setProcessingId(id);
+
+    try {
+      await registrationService.updateStatus(id, action);
+      success(`Registration ${action}ed successfully`);
+      loadRegistrations();
+    } catch (error: any) {
+      showError(error.response?.data?.message || `Failed to ${action} registration`);
+    } finally {
+      setProcessingId(null);
+      setConfirmDialog(prev => ({ ...prev, open: false }));
+    }
+  };
 
   const handleStatusUpdate = async (id: string, action: "approve" | "reject") => {
     try {
@@ -155,15 +208,14 @@ export default function PaymentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
-            <CreditCard className="h-7 w-7 text-primary" />
-            Payment & Approval
-          </h1>
-          <p className="text-muted-foreground">Manage pending registrations, update payment details, and approve students</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Payment & Approval"
+        description="Manage pending registrations, update payment details, and approve students"
+        breadcrumbs={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Payment" },
+        ]}
+      />
 
       <div className="relative w-full sm:w-80">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -269,7 +321,7 @@ export default function PaymentPage() {
                   <Button
                     size="sm"
                     className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
-                    onClick={() => handleStatusUpdate(reg._id, "approve")}
+                    onClick={() => handleApprove(reg._id)}
                   >
                     <Check className="mr-2 h-4 w-4" />
                     Approve
@@ -277,7 +329,7 @@ export default function PaymentPage() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleStatusUpdate(reg._id, "reject")}
+                    onClick={() => handleReject(reg._id)}
                     className="w-full md:w-auto"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
@@ -303,6 +355,18 @@ export default function PaymentPage() {
           onUpdate={loadRegistrations}
         />
       )}
+
+      <ConfirmationDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmLabel={confirmDialog.action === "approve" ? "Approve" : "Reject"}
+        cancelLabel="Cancel"
+        variant={confirmDialog.variant}
+        onConfirm={handleConfirmAction}
+        loading={!!processingId}
+      />
     </div>
   );
 }

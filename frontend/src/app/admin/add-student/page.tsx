@@ -19,6 +19,8 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StepProgress } from "@/components/ui/StepProgress";
 import { Check, FileText, ChevronLeft, ChevronRight, BookOpen, User, MapPin, Phone, GraduationCap, Heart, Upload, CreditCard, Eye, X } from "lucide-react";
 import styles from "./register.module.css";
 
@@ -110,6 +112,53 @@ export default function AddStudentPage() {
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [savedDraft, setSavedDraft] = useState<any>(null);
   const [previewDoc, setPreviewDoc] = useState<{ file: File | null; name: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+  const [touchedFields, setTouchedFields] = useState<{ [key: string]: boolean }>({});
+
+  const validateField = (field: string, value: string): string => {
+    switch (field) {
+      case 'email':
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return 'Please enter a valid email address';
+        }
+        break;
+      case 'phone':
+      case 'whatsappNumber':
+        if (value && !/^\d{10}$/.test(value)) {
+          return 'Please enter a valid 10-digit phone number';
+        }
+        break;
+      case 'pincode':
+        if (value && !/^\d{6}$/.test(value)) {
+          return 'Please enter a valid 6-digit pincode';
+        }
+        break;
+      case 'emergencyContact':
+        if (value && !/^\d{10}$/.test(value)) {
+          return 'Please enter a valid 10-digit phone number';
+        }
+        break;
+    }
+    return '';
+  };
+
+  const handleFieldBlur = (field: string, value: string) => {
+    setTouchedFields({ ...touchedFields, [field]: true });
+    const error = validateField(field, value);
+    setValidationErrors({ ...validationErrors, [field]: error });
+  };
+
+  const isFieldInvalid = (field: string): boolean => {
+    return touchedFields[field] && !!validationErrors[field];
+  };
+
+  const isFieldValid = (field: string, value: string): boolean => {
+    return touchedFields[field] && !validationErrors[field] && value.length > 0;
+  };
 
   const [basicDetails, setBasicDetails] = useState<BasicDetails>({
     title: "",
@@ -248,6 +297,7 @@ export default function AddStudentPage() {
 
     const interval = setInterval(async () => {
       try {
+        setIsSaving(true);
         let stepData: any = {};
         let step = currentStep;
 
@@ -280,14 +330,34 @@ export default function AddStudentPage() {
           data: stepData,
         });
         saveDraftToStorage(registrationId, currentStep);
+        setLastSaved(new Date());
+        setIsSaving(false);
+        setHasUnsavedChanges(false);
         console.log("Auto-saved at step", currentStep);
       } catch (error) {
         console.error("Auto-save failed:", error);
+        setIsSaving(false);
       }
     }, 30000);
 
     return () => clearInterval(interval);
   }, [registrationId, currentStep, basicDetails, address, contact, education, health, payment, isEditing, isProfileMode]);
+
+  useEffect(() => {
+    if (!registrationId || isEditing || isProfileMode) return;
+    setHasUnsavedChanges(true);
+  }, [basicDetails, address, contact, education, health, payment, registrationId, isEditing, isProfileMode]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const DRAFT_STORAGE_KEY = "registration_draft";
 
@@ -851,7 +921,7 @@ export default function AddStudentPage() {
 
   const stepLabels = [
     { label: "Courses" },
-    { label: "Basic" },
+    { label: "Basic Details" },
     { label: "Address" },
     { label: "Contact" },
     { label: "Education" },
@@ -859,30 +929,11 @@ export default function AddStudentPage() {
     { label: "Documents" },
   ];
 
+  const steps = stepLabels.map(s => s.label);
   const progressPercent = ((currentStep - 1) / 7) * 100;
 
   const renderStepIndicator = () => (
-    <div className="space-y-4">
-      <div className={styles.progressBar}>
-        <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
-      </div>
-      <div className={styles.stepIndicator}>
-        {stepLabels.map((step, index) => {
-          const stepIndex = index + 1;
-          const isActive = currentStep >= stepIndex;
-          const isCurrent = currentStep === stepIndex;
-          
-          return (
-            <div
-              key={stepIndex}
-              className={`${styles.step} ${isActive ? styles.active : ""} ${isCurrent ? styles.current : ""}`}
-            >
-              <div className={styles.stepLabel}>{step.label}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <StepProgress steps={steps} currentStep={currentStep} showStepText className="mb-6" />
   );
 
   const renderStep2 = () => (
@@ -984,19 +1035,24 @@ export default function AddStudentPage() {
               required
               value={basicDetails.email}
               onChange={(e) => setBasicDetails({ ...basicDetails, email: e.target.value })}
+              onBlur={() => handleFieldBlur('email', basicDetails.email)}
+              error={isFieldInvalid('email') ? validationErrors['email'] : undefined}
+              showValid={isFieldValid('email', basicDetails.email)}
               placeholder="student@example.com"
             />
           </div>
         </div>
       </div>
       
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(1)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleBasicDetailsSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-between max-w-7xl mx-auto">
+          <Button variant="outline" onClick={() => setCurrentStep(1)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button onClick={handleBasicDetailsSubmit}>
+            Next <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1060,7 +1116,10 @@ export default function AddStudentPage() {
             label="Pin Code"
             required
             value={address.pincode}
-            onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
+            onChange={(e) => setAddress({ ...address, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+            onBlur={() => handleFieldBlur('pincode', address.pincode)}
+            error={isFieldInvalid('pincode') ? validationErrors['pincode'] : undefined}
+            showValid={isFieldValid('pincode', address.pincode)}
             placeholder="6-digit pincode"
             maxLength={6}
           />
@@ -1096,13 +1155,15 @@ export default function AddStudentPage() {
         </div>
       </div>
       
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(2)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleAddressSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-between max-w-7xl mx-auto">
+          <Button variant="outline" onClick={() => setCurrentStep(2)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button onClick={handleAddressSubmit}>
+            Next <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
     );
@@ -1127,7 +1188,10 @@ export default function AddStudentPage() {
             label="Phone Number"
             required
             value={contact.phone}
-            onChange={(e) => setContact({ ...contact, phone: e.target.value })}
+            onChange={(e) => setContact({ ...contact, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+            onBlur={() => handleFieldBlur('phone', contact.phone)}
+            error={isFieldInvalid('phone') ? validationErrors['phone'] : undefined}
+            showValid={isFieldValid('phone', contact.phone)}
             placeholder="10-digit phone number"
             maxLength={10}
           />
@@ -1138,7 +1202,7 @@ export default function AddStudentPage() {
               value={contact.sameAsMobile ? contact.phone : contact.whatsappNumber}
               onChange={(e) => {
                 if (!contact.sameAsMobile) {
-                  setContact({ ...contact, whatsappNumber: e.target.value });
+                  setContact({ ...contact, whatsappNumber: e.target.value.replace(/\D/g, '').slice(0, 10) });
                 }
               }}
               placeholder="10-digit WhatsApp number"
@@ -1160,7 +1224,10 @@ export default function AddStudentPage() {
             label="Emergency Contact Number"
             required
             value={contact.emergencyContact}
-            onChange={(e) => setContact({ ...contact, emergencyContact: e.target.value })}
+            onChange={(e) => setContact({ ...contact, emergencyContact: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+            onBlur={() => handleFieldBlur('emergencyContact', contact.emergencyContact)}
+            error={isFieldInvalid('emergencyContact') ? validationErrors['emergencyContact'] : undefined}
+            showValid={isFieldValid('emergencyContact', contact.emergencyContact)}
             placeholder="10-digit phone number"
             maxLength={10}
           />
@@ -1186,13 +1253,15 @@ export default function AddStudentPage() {
         </div>
       </div>
       
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(3)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleContactSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-between max-w-7xl mx-auto">
+          <Button variant="outline" onClick={() => setCurrentStep(3)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button onClick={handleContactSubmit}>
+            Next <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1246,13 +1315,15 @@ export default function AddStudentPage() {
         </div>
       </div>
       
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(4)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleEducationSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-between max-w-7xl mx-auto">
+          <Button variant="outline" onClick={() => setCurrentStep(4)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button onClick={handleEducationSubmit}>
+            Next <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1293,13 +1364,15 @@ export default function AddStudentPage() {
         />
       </div>
       
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(5)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleHealthSubmit}>
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-between max-w-7xl mx-auto">
+          <Button variant="outline" onClick={() => setCurrentStep(5)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button onClick={handleHealthSubmit}>
+            Next <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1312,81 +1385,147 @@ export default function AddStudentPage() {
         </div>
         <div>
           <h2 className="text-xl font-semibold text-foreground">Upload Documents</h2>
-          <p className="text-sm text-muted-foreground">Please upload the following documents (PDF, JPG, PNG)</p>
+          <p className="text-sm text-muted-foreground">Upload required documents for verification</p>
         </div>
       </div>
       
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-6">
+        <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+          <FileText className="h-4 w-4" />
+          <span>Accepted formats: JPG, PNG, PDF (max 5MB per file)</span>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           {[
-            { key: "photo", title: "Photo", subtitle: "Passport size photograph (JPG, PNG)" },
-            { key: "signature", title: "Signature", subtitle: "Your signature on white paper (JPG, PNG)" },
-            { key: "admissionFormFront", title: "Admission Form - Front", subtitle: "First page of filled admission form" },
-            { key: "admissionFormBack", title: "Admission Form - Back", subtitle: "Second page of filled admission form" },
-          ].map((doc) => (
-            <div key={doc.key} className={`flex flex-col gap-3 rounded-lg border p-4 transition-all ${
-              documents[doc.key as keyof typeof documents]
-                ? "border-emerald-200 bg-emerald-50/50"
-                : "border-border bg-muted/30 hover:border-primary/30"
-            }`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    documents[doc.key as keyof typeof documents]
-                      ? "bg-emerald-100 text-emerald-600"
-                      : "bg-primary/10 text-primary"
-                  }`}>
-                    {documents[doc.key as keyof typeof documents] ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-foreground">{doc.title} <span className="text-destructive">*</span></h4>
-                    <p className="text-xs text-muted-foreground">{doc.subtitle}</p>
-                  </div>
-                </div>
-              </div>
-              <label className={`cursor-pointer rounded-lg border px-4 py-2 text-center text-sm font-medium transition-all ${
-                documents[doc.key as keyof typeof documents]
-                  ? "border-emerald-200 bg-card text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
-                  : "border-dashed border-input bg-background text-foreground hover:bg-accent"
+            { key: "photo", title: "Photo", subtitle: "Passport size photograph", formats: "JPG, PNG" },
+            { key: "signature", title: "Signature", subtitle: "Your signature on white paper", formats: "JPG, PNG" },
+            { key: "admissionFormFront", title: "Admission Form - Front", subtitle: "First page of filled form", formats: "PDF, JPG, PNG" },
+            { key: "admissionFormBack", title: "Admission Form - Back", subtitle: "Second page of filled form", formats: "PDF, JPG, PNG" },
+          ].map((doc) => {
+            const file = documents[doc.key as keyof typeof documents];
+            const isUploaded = !!file;
+            
+            return (
+              <div key={doc.key} className={`flex flex-col gap-3 rounded-xl border-2 p-4 transition-all ${
+                isUploaded
+                  ? "border-emerald-300 bg-emerald-50/30"
+                  : "border-dashed border-border bg-muted/20 hover:border-primary/40 hover:bg-muted/40"
               }`}>
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => handleFileChange(doc.key, e.target.files?.[0] || null)}
-                  className="hidden"
-                />
-                {documents[doc.key as keyof typeof documents] ? "Change File" : "Upload Document"}
-              </label>
-              {documents[doc.key as keyof typeof documents] && (
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-emerald-600 font-medium truncate">
-                    {(documents[doc.key as keyof typeof documents])?.name}
-                  </p>
-                  <button
-                    onClick={() => setPreviewDoc({ file: documents[doc.key as keyof typeof documents], name: doc.title })}
-                    className="flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <Eye className="h-3 w-3" />
-                    View
-                  </button>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                      isUploaded
+                        ? "bg-emerald-100 text-emerald-600"
+                        : "bg-primary/10 text-primary"
+                    }`}>
+                      {isUploaded ? (
+                        <Check className="h-5 w-5" />
+                      ) : (
+                        <FileText className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">{doc.title} <span className="text-destructive">*</span></h4>
+                      <p className="text-xs text-muted-foreground">{doc.subtitle}</p>
+                    </div>
+                  </div>
+                  {isUploaded && (
+                    <button
+                      onClick={() => handleFileChange(doc.key, null)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Remove file"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+
+                {isUploaded ? (
+                  <div className="flex items-center gap-3 p-2 bg-card rounded-lg border">
+                    {file?.type?.startsWith('image/') ? (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt={doc.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-8 w-8 text-red-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{file?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {file ? (file.size / 1024 / 1024).toFixed(2) : '0'} MB
+                      </p>
+                      <p className="text-xs text-emerald-600 font-medium">Ready for upload</p>
+                    </div>
+                    <button
+                      onClick={() => setPreviewDoc({ file, name: doc.title })}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                      title="Preview"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className={`cursor-pointer rounded-lg border-2 border-dashed px-4 py-3 text-center text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    "border-dashed border-input bg-background text-foreground hover:bg-accent hover:border-primary"
+                  }`}>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange(doc.key, e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <Upload className="h-4 w-4" />
+                    Upload {doc.formats}
+                  </label>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <p className="text-sm text-muted-foreground">
+            {Object.values(documents).filter(Boolean).length} of 4 documents uploaded
+          </p>
+          <div className="flex gap-2">
+            {Object.entries(documents).map(([key, file]) => file && (
+              <button
+                key={key}
+                onClick={() => setPreviewDoc({ file, name: key })}
+                className="w-8 h-8 rounded-lg border bg-card hover:ring-2 hover:ring-primary/30 transition-all"
+              >
+                {file.type?.startsWith('image/') ? (
+                  <img 
+                    src={URL.createObjectURL(file)} 
+                    alt={key}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => setCurrentStep(6)}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button onClick={handleDocumentsSubmit} disabled={submitting}>
-          {submitting ? "Submitting..." : "Submit Registration"}
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-between max-w-7xl mx-auto">
+          <Button variant="outline" onClick={() => setCurrentStep(6)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button onClick={handleDocumentsSubmit} disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit Registration"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1465,13 +1604,15 @@ export default function AddStudentPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end pt-2">
-        <Button
-          onClick={handleCoursesSubmit}
-          disabled={submitting || (isProfileMode ? false : selectedCourses.length === 0)}
-        >
-          {submitting ? "Saving..." : "Next"} <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 -mx-6 md:mx-0 md:px-6 lg:rounded-b-xl shadow-lg z-40">
+        <div className="flex justify-end max-w-7xl mx-auto">
+          <Button
+            onClick={handleCoursesSubmit}
+            disabled={submitting || (isProfileMode ? false : selectedCourses.length === 0)}
+          >
+            {submitting ? "Saving..." : "Next"} <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1519,9 +1660,16 @@ export default function AddStudentPage() {
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <LinkButton href="/admin/student" variant="ghost" size="sm" className="w-fit -ml-2">
-              <ChevronLeft className="mr-1 h-4 w-4" /> Back to Registrations
-            </LinkButton>
+            <div className="flex items-center gap-2">
+              <LinkButton href="/admin/student" variant="ghost" size="sm" className="w-fit -ml-2">
+                <ChevronLeft className="mr-1 h-4 w-4" /> Back
+              </LinkButton>
+              {!isProfileMode && !isEditing && (
+                <span className="text-xs text-muted-foreground">
+                  Step {currentStep} of 7
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl font-bold text-foreground">
               {isProfileMode ? "Update Profile" : isEditing ? "Edit Registration" : "Student Registration"}
             </h1>
@@ -1529,11 +1677,19 @@ export default function AddStudentPage() {
               {isProfileMode ? "Update student profile information" : isEditing ? "Update registration details" : "Fill in the details to register a new student"}
             </p>
           </div>
-          {!isProfileMode && !isEditing && (
-            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2">
-              <span className="text-sm text-muted-foreground">Step</span>
-              <span className="text-lg font-bold text-primary">{currentStep}</span>
-              <span className="text-sm text-muted-foreground">of 8</span>
+          {!isProfileMode && !isEditing && registrationId && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {isSaving ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  Saving...
+                </span>
+              ) : lastSaved ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  All changes saved
+                </span>
+              ) : null}
             </div>
           )}
         </div>
@@ -1618,7 +1774,7 @@ export default function AddStudentPage() {
         <>
           {renderStepIndicator()}
 
-          <div className="space-y-6">
+          <div className="space-y-6 pb-24">
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}

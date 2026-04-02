@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { userService } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { 
   User, 
@@ -97,11 +98,11 @@ function SectionCard({
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center gap-2">
+      <CardHeader className="flex flex-row items-center gap-2 pb-2">
         {icon}
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="divide-y divide-border">
+      <CardContent className="divide-y divide-border pt-0">
         {children}
       </CardContent>
     </Card>
@@ -156,10 +157,14 @@ export default function StudentProfile() {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-          <p className="text-muted-foreground">View your profile information</p>
-        </div>
+        <PageHeader
+          title="Profile"
+          description="View your profile information"
+          breadcrumbs={[
+            { label: "Student", href: "/student/dashboard" },
+            { label: "Profile" },
+          ]}
+        />
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-destructive mb-4" />
@@ -179,10 +184,14 @@ export default function StudentProfile() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-        <p className="text-muted-foreground">View your profile information</p>
-      </div>
+      <PageHeader
+        title="Profile"
+        description="View your profile information"
+        breadcrumbs={[
+          { label: "Student", href: "/student/dashboard" },
+          { label: "Profile" },
+        ]}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Account Information" icon={<Shield className="h-5 w-5 text-primary" />}>

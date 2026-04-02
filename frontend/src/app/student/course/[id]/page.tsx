@@ -6,8 +6,8 @@ import { useAuth } from "@/lib/auth";
 import { courseService, progressService } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { BookOpen, PlayCircle, CheckCircle, ChevronLeft, ChevronRight, Video, Trophy, ArrowRight, Sparkles, Circle, CheckCircle2, Zap, Star, Clock } from "lucide-react";
-import confetti from "canvas-confetti";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { BookOpen, PlayCircle, CheckCircle, ChevronLeft, ChevronRight, Video, Trophy, CheckCircle2, Clock } from "lucide-react";
 
 interface VideoItem {
   _id: string;
@@ -112,13 +112,6 @@ export default function CourseDetail() {
           updated.set(videoId, { ...existing, isCompleted: true, completionPercentage: 100 });
         }
         return updated;
-      });
-      
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#6366f1', '#22c55e', '#f59e0b', '#ec4899']
       });
     } catch (error) {
       console.error("Failed to mark video complete:", error);
@@ -290,219 +283,197 @@ export default function CourseDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-        <p className="font-medium text-foreground mb-1">Course not found</p>
-        <p className="text-sm text-muted-foreground mb-4">
-          This course may not exist or you may not have access
-        </p>
-        <Button variant="outline" onClick={() => router.push("/student/courses")}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back to Courses
-        </Button>
+      <div className="space-y-6">
+        <PageHeader
+          title="Course Not Found"
+          breadcrumbs={[
+            { label: "Student", href: "/student/dashboard" },
+            { label: "Courses", href: "/student/courses" },
+            { label: "Not Found" },
+          ]}
+        />
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="font-medium text-foreground mb-1">Course not found</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              This course may not exist or you may not have access
+            </p>
+            <Button variant="outline" onClick={() => router.push("/student/courses")}>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back to Courses
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => router.push("/student/courses")}
-          className="hover:bg-primary/10"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">{course.title}</h1>
-          <p className="text-muted-foreground">{course.description || "No description"}</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={course.title}
+        description={course.description || "No description"}
+        breadcrumbs={[
+          { label: "Student", href: "/student/dashboard" },
+          { label: "Courses", href: "/student/courses" },
+          { label: course.title },
+        ]}
+      />
 
-      {/* Progress Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 text-white shadow-2xl">
-        <div className="absolute top-0 right-0 -mt-6 -mr-6 h-32 w-32 rounded-full bg-white/10 animate-pulse"></div>
-        <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/5"></div>
-        <div className="absolute top-4 right-32 text-4xl animate-bounce">🏆</div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <p className="flex items-center gap-2 text-indigo-100 font-semibold mb-2">
-              <Trophy className="h-5 w-5" /> Your Learning Journey
-            </p>
-            <div className="flex items-center gap-6">
-              <span className="text-5xl font-extrabold drop-shadow-lg">{progress}%</span>
+      {/* Progress Card */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                <Trophy className="h-6 w-6 text-primary" />
+              </div>
               <div>
-                <p className="text-indigo-100 font-medium">{completedCount} of {totalVideos} lessons done</p>
-                {progress === 100 && <p className="text-yellow-300 font-bold text-lg mt-1">🎉 You did it! Amazing job!</p>}
+                <p className="text-sm text-muted-foreground">Course Progress</p>
+                <p className="text-2xl font-bold text-foreground">{progress}%</p>
+                <p className="text-xs text-muted-foreground">{completedCount} of {totalVideos} lessons</p>
+              </div>
+            </div>
+            <div className="flex-1 max-w-xs">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
             </div>
           </div>
-          <div className="h-20 w-20 relative">
-            <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-              <path
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="rgba(255,255,255,0.2)"
-                strokeWidth="3"
-              />
-              <path
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeDasharray={`${progress}, 100`}
-                className="transition-all duration-700 ease-out"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              {progress === 100 ? (
-                <Star className="h-8 w-8 text-yellow-300 animate-pulse" />
-              ) : (
-                <Sparkles className="h-6 w-6 text-yellow-300" />
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="mt-5 h-3 w-full rounded-full bg-white/30 overflow-hidden shadow-inner">
-          <div 
-            className="h-full rounded-full bg-white shadow-lg shadow-white/30 transition-all duration-700 ease-out" 
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Video Player & Video List */}
+      {/* Video Player & Content */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Video Player Section */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* Video Player */}
+        <div className="lg:col-span-2 space-y-4">
           {selectedVideo ? (
             <>
-              <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl ring-4 ring-primary/10">
+              <div className="aspect-video bg-black rounded-xl overflow-hidden">
                 {youtubeId ? (
                   <div id="youtube-player" className="absolute inset-0" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-white">
-                    <Video className="h-16 w-16" />
+                    <Video className="h-12 w-12" />
                     <p className="ml-2">Video not available</p>
                   </div>
                 )}
               </div>
               
-              <div className="flex items-center justify-between bg-card rounded-2xl p-5 shadow-lg border border-border">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      Lesson {getAllVideos().findIndex(v => v._id === selectedVideo._id) + 1} of {totalVideos}
-                    </span>
-                    {completedVideos.has(selectedVideo._id) && (
-                      <span className="flex items-center gap-1 text-emerald-600 font-bold text-sm">
-                        <CheckCircle2 className="h-4 w-4" /> Completed
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          Lesson {getAllVideos().findIndex(v => v._id === selectedVideo._id) + 1} of {totalVideos}
+                        </span>
+                        {completedVideos.has(selectedVideo._id) && (
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            Completed
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground">{selectedVideo.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {(() => {
+                          const allVids = getAllVideos();
+                          const idx = allVids.findIndex(v => v._id === selectedVideo._id);
+                          return `Module ${Math.floor(idx / 10) + 1} • Lesson ${(idx % 10) + 1}`;
+                        })()}
+                      </p>
+                    </div>
+                    {!completedVideos.has(selectedVideo._id) ? (
+                      <Button
+                        onClick={() => handleVideoComplete(selectedVideo._id)}
+                        disabled={markingComplete === selectedVideo._id}
+                        size="sm"
+                      >
+                        {markingComplete === selectedVideo._id ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Mark Complete
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-sm font-medium text-emerald-600 flex items-center gap-1">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Done
                       </span>
                     )}
                   </div>
-                  <h3 className="text-xl font-bold text-foreground">{selectedVideo.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {(() => {
-                      const allVids = getAllVideos();
-                      const idx = allVids.findIndex(v => v._id === selectedVideo._id);
-                      return `Module ${Math.floor(idx / 10) + 1} • Lesson ${(idx % 10) + 1}`;
-                    })()}
-                  </p>
-                </div>
-                {!completedVideos.has(selectedVideo._id) ? (
-                  <Button
-                    onClick={() => handleVideoComplete(selectedVideo._id)}
-                    disabled={markingComplete === selectedVideo._id}
-                    className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                  >
-                    {markingComplete === selectedVideo._id ? (
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-5 w-5 mr-2" />
-                        Mark Complete
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-5 py-3 rounded-xl font-bold">
-                    <CheckCircle2 className="h-5 w-5" />
-                    Done!
-                  </div>
-                )}
-              </div>
+                </CardContent>
+              </Card>
 
-              {/* Next Video Suggestion */}
+              {/* Next Video */}
               {nextVideo && (
-                <div className="rounded-2xl border-2 border-border bg-gradient-to-r from-muted/50 to-muted/30 p-5">
-                  <p className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-yellow-500" /> Up Next
-                  </p>
-                  <button
-                    onClick={() => setSelectedVideo(nextVideo)}
-                    className="flex w-full items-center gap-4 rounded-xl p-4 text-left transition-all hover:bg-primary/5 hover:scale-[1.01] border border-transparent hover:border-primary/20"
-                  >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg">
-                      <PlayCircle className="h-7 w-7" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-foreground">{nextVideo.title}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                        <span className="bg-muted px-2 py-0.5 rounded-full text-xs">Module {nextVideo.moduleIndex + 1}</span>
-                        <span className="bg-muted px-2 py-0.5 rounded-full text-xs">Lesson {nextVideo.videoIndex + 1}</span>
-                      </p>
-                    </div>
-                    <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </button>
-                </div>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm font-medium text-muted-foreground mb-3">Up Next</p>
+                    <button
+                      onClick={() => setSelectedVideo(nextVideo)}
+                      className="flex w-full items-center gap-3 p-3 rounded-lg text-left hover:bg-muted transition-colors"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <PlayCircle className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{nextVideo.title}</p>
+                        <p className="text-xs text-muted-foreground">Module {nextVideo.moduleIndex + 1} • Lesson {nextVideo.videoIndex + 1}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </CardContent>
+                </Card>
               )}
             </>
           ) : (
-            <div className="aspect-video flex flex-col items-center justify-center rounded-2xl bg-muted">
-              <PlayCircle className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground font-medium">Select a lesson to start learning</p>
-            </div>
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <PlayCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Select a lesson to start learning</p>
+              </CardContent>
+            </Card>
           )}
         </div>
 
-        {/* Video List */}
+        {/* Course Content */}
         <div className="space-y-4">
-          <h3 className="font-bold text-lg text-foreground flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg">
-              <Video className="h-5 w-5" />
-            </span>
-            Course Content
-          </h3>
+          <h3 className="text-lg font-semibold text-foreground">Course Content</h3>
           
-          <div className="max-h-[650px] space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="max-h-[500px] overflow-y-auto space-y-3 pr-2">
             {course.modules.map((module, moduleIndex) => (
-              <div key={module._id} className="rounded-2xl border-2 border-border bg-card overflow-hidden shadow-md">
-                <div className="bg-gradient-to-r from-muted/80 to-muted/50 py-4 px-4 border-b border-border">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-sm shadow-md">
+              <Card key={module._id} className="overflow-hidden">
+                <CardHeader className="py-3 px-4 bg-muted/50 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium">
                       {moduleIndex + 1}
                     </span>
-                    <h4 className="font-bold text-foreground flex-1">{module.title}</h4>
-                    <span className="text-xs font-bold bg-muted px-3 py-1 rounded-full text-muted-foreground">
+                    <h4 className="text-sm font-medium text-foreground flex-1 truncate">{module.title}</h4>
+                    <span className="text-xs text-muted-foreground">
                       {module.videos.filter(v => completedVideos.has(v._id)).length}/{module.videos.length}
                     </span>
                   </div>
-                </div>
-                <div className="p-3">
+                </CardHeader>
+                <CardContent className="p-2">
                   {module.videos.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 px-2 text-center">No videos in this module</p>
+                    <p className="text-sm text-muted-foreground py-2 px-2 text-center">No videos in this module</p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {module.videos.map((video, videoIdx) => {
                         const isCompleted = completedVideos.has(video._id);
                         const isSelected = selectedVideo?._id === video._id;
@@ -511,95 +482,58 @@ export default function CourseDetail() {
                           <button
                             key={video._id}
                             onClick={() => setSelectedVideo(video)}
-                            className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-200 ${
+                            className={`w-full flex items-center gap-2 rounded-lg p-2 text-left transition-colors ${
                               isSelected
-                                ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/15 border-2 border-indigo-500/30 shadow-md"
+                                ? "bg-primary/10 border border-primary/30"
                                 : isCompleted
-                                ? "hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border-2 border-transparent"
-                                : "hover:bg-muted border-2 border-transparent"
+                                ? "hover:bg-muted"
+                                : "hover:bg-muted"
                             }`}
                           >
-                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold ${
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-medium ${
                               isCompleted 
-                                ? "bg-gradient-to-r from-emerald-400 to-green-500 text-white shadow-lg" 
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                                 : isSelected
-                                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg animate-pulse"
+                                ? "bg-primary text-primary-foreground"
                                 : "bg-muted text-muted-foreground"
                             }`}>
                               {isCompleted ? (
-                                <CheckCircle2 className="h-5 w-5" />
+                                <CheckCircle2 className="h-4 w-4" />
                               ) : (
-                                <span className="text-sm">{videoIdx + 1}</span>
+                                <span>{videoIdx + 1}</span>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold truncate ${
-                                isCompleted ? "text-muted-foreground line-through decoration-1" : "text-foreground"
-                              }`}>
+                              <p className={`text-sm truncate ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>
                                 {video.title}
                               </p>
-                              {isCompleted && (
-                                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
-                                  <CheckCircle2 className="h-3 w-3" /> Completed
-                                </p>
-                              )}
                             </div>
-                            <div className={`shrink-0 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                              {isSelected ? (
-                                <span className="flex h-3 w-3 rounded-full bg-indigo-500 animate-pulse" />
-                              ) : isCompleted ? (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                              ) : (
-                                <PlayCircle className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
+                            {isCompleted && (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                            )}
                           </button>
                         );
                       })}
                     </div>
                   )}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Completion Celebration */}
+      {/* Completion Message */}
       {progress === 100 && (
-        <div className="rounded-3xl border-3 border-emerald-400 bg-gradient-to-r from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950/30 dark:via-green-950/20 dark:to-teal-950/30 p-8 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500"></div>
-          <div className="absolute -top-10 -right-10 text-8xl opacity-20">🏆</div>
-          <div className="absolute -bottom-10 -left-10 text-8xl opacity-20">⭐</div>
-          <div className="relative z-10">
-            <div className="flex justify-center mb-6">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-green-500 shadow-2xl animate-bounce">
-                <Trophy className="h-12 w-12 text-white" />
-              </div>
-            </div>
-            <h3 className="text-3xl font-extrabold text-gradient bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 dark:from-emerald-400 dark:via-green-400 dark:to-teal-400 mb-3">
-              🎉 Amazing Job! You Did It!
-            </h3>
-            <p className="text-muted-foreground text-lg font-medium max-w-md mx-auto mb-6">
-              You&apos;ve completed all <span className="font-bold text-emerald-600">{totalVideos}</span> lessons in this course! 
-              You&apos;re a learning superstar! 🌟
+        <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
+          <CardContent className="p-6 text-center">
+            <Trophy className="h-12 w-12 text-emerald-600 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Course Completed!</h3>
+            <p className="text-sm text-muted-foreground">
+              Congratulations! You have completed all {totalVideos} lessons in this course.
             </p>
-            <div className="flex justify-center gap-4">
-              <Button 
-                className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                onClick={() => router.push("/student/courses")}
-              >
-                <Sparkles className="h-5 w-5 mr-2" />
-                Continue Learning
-              </Button>
-            </div>
-            <div className="mt-6 flex justify-center gap-2 text-4xl">
-              <span className="animate-bounce">🌟</span>
-              <span className="animate-bounce" style={{animationDelay: '0.1s'}}>🚀</span>
-              <span className="animate-bounce" style={{animationDelay: '0.2s'}}>💪</span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

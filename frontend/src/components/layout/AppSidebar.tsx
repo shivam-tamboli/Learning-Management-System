@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 import {
   LayoutDashboard,
   Users,
@@ -14,6 +15,8 @@ import {
   Sun,
   Moon,
   CreditCard,
+  UserCircle,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/components/ui/ThemeProvider";
@@ -27,6 +30,7 @@ interface NavItem {
 const adminNavItems: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Students", href: "/admin/student", icon: Users },
+  { label: "Draft", href: "/admin/student?status=draft", icon: FileText },
   { label: "Add Student", href: "/admin/add-student", icon: GraduationCap },
   { label: "Payment", href: "/admin/payment", icon: CreditCard },
   { label: "Courses", href: "/admin/course/manage", icon: BookOpen },
@@ -48,6 +52,7 @@ function SidebarContent({ isAdmin, onNavClick }: SidebarContentProps) {
   const router = useRouter();
   const navItems = isAdmin ? adminNavItems : studentNavItems;
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { user } = useAuth();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -56,6 +61,10 @@ function SidebarContent({ isAdmin, onNavClick }: SidebarContentProps) {
   };
 
   const isActive = (href: string) => {
+    if (href.includes("?")) {
+      const [path, query] = href.split("?");
+      return pathname === path && window.location.search.includes(query.split("=")[1]);
+    }
     if (href === "/admin/dashboard" || href === "/student/dashboard") {
       return pathname === href;
     }
@@ -72,6 +81,20 @@ function SidebarContent({ isAdmin, onNavClick }: SidebarContentProps) {
           LMS Admin
         </Link>
       </div>
+
+      {user && (
+        <div className="mx-3 mt-4 rounded-lg bg-muted/50 p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <UserCircle className="h-6 w-6 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+              <p className="truncate text-xs text-muted-foreground capitalize">{user.role}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => (
