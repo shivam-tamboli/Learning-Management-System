@@ -587,6 +587,34 @@ export default function StudentListPage() {
                     </div>
                   )}
 
+                  {/* Draft Expiry Row */}
+                  {reg.status === "draft" && reg.expiresAt && (
+                    <div className="col-span-12 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between">
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Draft Status</span>
+                      {(() => {
+                        const daysLeft = Math.ceil(
+                          (new Date(reg.expiresAt).getTime() - Date.now()) /
+                          (1000 * 60 * 60 * 24)
+                        );
+                        return (
+                          <p className={`text-xs font-medium ${
+                            daysLeft <= 0
+                              ? "text-red-600"
+                              : daysLeft <= 2
+                              ? "text-amber-600"
+                              : "text-amber-700 dark:text-amber-400"
+                          }`}>
+                            {daysLeft <= 0
+                              ? "(Expired)"
+                              : daysLeft <= 2
+                              ? `⚠️ Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
+                              : `Expires in ${daysLeft} days`}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   {/* Timestamp Row - For non-approved students */}
                   {reg.status !== "approved" && (reg.createdAt || reg.updatedAt) && (
                     <div className="col-span-12 bg-muted/30 border-t border-border px-4 py-2 flex items-center justify-end gap-4 text-xs text-muted-foreground">
