@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { CheckCircle, XCircle, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,9 +35,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const addToast = useCallback((message: string, type: ToastType = "info") => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -73,6 +70,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
+  const [progress, setProgress] = useState(100);
+  const duration = 4000;
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+      setProgress(remaining);
+      if (remaining === 0) {
+        clearInterval(interval);
+        onDismiss(toast.id);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [toast.id, onDismiss]);
+
   const icons = {
     success: <CheckCircle className="h-5 w-5 text-emerald-500" />,
     error: <XCircle className="h-5 w-5 text-red-500" />,
@@ -85,21 +100,35 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
     info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950",
   };
 
+  const progressStyles = {
+    success: "bg-emerald-400",
+    error: "bg-red-400",
+    info: "bg-blue-400",
+  };
+
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-lg border p-4 shadow-lg animate-in slide-in-from-right",
+        "flex flex-col rounded-lg border p-4 shadow-lg animate-in slide-in-from-right overflow-hidden",
         styles[toast.type]
       )}
     >
-      {icons[toast.type]}
-      <p className="flex-1 text-sm font-medium text-foreground">{toast.message}</p>
-      <button
-        onClick={() => onDismiss(toast.id)}
-        className="rounded-lg p-1 hover:bg-black/5 transition-colors"
-      >
-        <X className="h-4 w-4 text-muted-foreground" />
-      </button>
+      <div className="flex items-center gap-3">
+        {icons[toast.type]}
+        <p className="flex-1 text-sm font-medium text-foreground">{toast.message}</p>
+        <button
+          onClick={() => onDismiss(toast.id)}
+          className="rounded-lg p-1 hover:bg-black/5 transition-colors"
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+      <div className="mt-2 h-1 w-full rounded-full bg-black/10 dark:bg-white/10">
+        <div
+          className={cn("h-full rounded-full transition-all duration-50", progressStyles[toast.type])}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
     </div>
   );
 }

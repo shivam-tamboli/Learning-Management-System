@@ -6,10 +6,73 @@ import { useAuth } from "@/lib/auth";
 import { courseService, registrationService } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
-import { LoadingPage } from "@/components/ui/Loading";
+import { LoadingPage, LoadingCard } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { Plus, BookOpen, Users, Clock, ArrowRight, GraduationCap, FileText, X } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Plus, BookOpen, Users, Clock, ArrowRight, GraduationCap, FileText, X, TrendingUp, TrendingDown, CheckCircle } from "lucide-react";
+
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  icon: React.ReactNode;
+  trend?: { value: number; isPositive: boolean };
+  variant?: "default" | "warning" | "success";
+  onClick?: () => void;
+}
+
+function StatCard({ label, value, icon, trend, variant = "default", onClick }: StatCardProps) {
+  const baseStyles = "rounded-xl border bg-card p-5 shadow-sm transition-all duration-200";
+  const variantStyles = {
+    default: "border-border hover:border-primary/30 hover:shadow-md",
+    warning: "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 hover:border-amber-300",
+    success: "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-300",
+  };
+  const clickableStyles = onClick ? "cursor-pointer hover:-translate-y-0.5" : "";
+
+  const labelColor = variant === "warning" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground";
+  const valueColor = variant === "warning" ? "text-amber-600 dark:text-amber-400" : variant === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground";
+  const iconBg = variant === "warning" ? "bg-amber-100 dark:bg-amber-900" : variant === "success" ? "bg-emerald-100 dark:bg-emerald-900" : "bg-primary/10";
+  const iconColor = variant === "warning" ? "text-amber-600 dark:text-amber-400" : variant === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-primary";
+
+  return (
+    <div className={`${baseStyles} ${variantStyles[variant]} ${clickableStyles}`} onClick={onClick}>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <p className={`text-sm font-medium ${labelColor}`}>{label}</p>
+          <p className={`text-[28px] font-bold ${valueColor} leading-tight`}>{value}</p>
+          {trend && (
+            <div className={`flex items-center gap-1 text-xs font-medium ${trend.isPositive ? "text-emerald-600" : "text-red-500"}`}>
+              {trend.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              <span>{trend.value}% from last month</span>
+            </div>
+          )}
+        </div>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconBg}`}>
+          <div className={iconColor}>{icon}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickActionCard({ href, icon, title, description }: { href: string; icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-start gap-4 p-5 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 w-full h-full"
+    >
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+        {icon}
+      </div>
+      <div className="flex-1 text-left min-w-0">
+        <span className="font-semibold text-foreground block">{title}</span>
+        <span className="text-sm text-muted-foreground">{description}</span>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1 transition-transform group-hover:translate-x-1" />
+    </Link>
+  );
+}
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -42,121 +105,111 @@ export default function AdminDashboard() {
   const pendingCount = registrations.filter((r) => r.status === "pending").length;
   const approvedCount = registrations.filter((r) => r.status === "approved").length;
   const draftCount = registrations.filter((r) => r.status === "draft").length;
+  const completedCount = registrations.filter((r) => r.payment?.status === "completed").length;
 
   if (loading) {
-    return <LoadingPage text="Loading dashboard..." />;
+    return (
+      <div className="space-y-6">
+        <PageHeader 
+          title="Admin Dashboard" 
+          description="Loading..."
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <LoadingCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {user?.name}. Here&apos;s an overview of your LMS.
-        </p>
+    <div className="space-y-6">
+      <PageHeader 
+        title="Admin Dashboard" 
+        description={`Welcome back, ${user?.name}. Here's what's happening with your LMS.`}
+        breadcrumbs={[
+          { label: "Admin" },
+        ]}
+        actions={
+          <LinkButton href="/admin/add-student">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Student
+          </LinkButton>
+        }
+      />
+
+      {/* Stats Grid - 4 columns desktop, 2 tablet, 1 mobile */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total Courses"
+          value={courses.length}
+          icon={<BookOpen className="h-5 w-5" />}
+          trend={{ value: 12, isPositive: true }}
+        />
+        <StatCard
+          label="Total Students"
+          value={registrations.length}
+          icon={<Users className="h-5 w-5" />}
+          trend={{ value: 8, isPositive: true }}
+        />
+        <StatCard
+          label="Pending Approvals"
+          value={pendingCount}
+          icon={<Clock className="h-5 w-5" />}
+          variant="warning"
+        />
+        <StatCard
+          label="Completed Payments"
+          value={completedCount}
+          icon={<CheckCircle className="h-5 w-5" />}
+          variant="success"
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Courses</p>
-              <p className="text-3xl font-bold text-foreground mt-1">{courses.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Active courses in the system</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950">
-              <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Registrations</p>
-              <p className="text-3xl font-bold text-foreground mt-1">{registrations.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">All student registrations</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-950">
-              <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Pending Approvals</p>
-              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1">{pendingCount}</p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Awaiting your review</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900">
-              <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowDraftModal(true)}
-          className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 p-6 shadow-sm text-left hover:border-slate-300 dark:hover:border-slate-600 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Draft Students</p>
-              <p className="text-3xl font-bold text-slate-700 dark:text-slate-200 mt-1">{draftCount}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Incomplete registrations</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700">
-              <FileText className="h-6 w-6 text-slate-600 dark:text-slate-300" />
-            </div>
-          </div>
-        </button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <LinkButton
-          href="/admin/add-student"
-          className="group flex flex-col items-start gap-3 p-6 h-auto rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Plus className="h-5 w-5 text-primary" />
-            </div>
-            <span className="font-semibold text-foreground">Add New Student</span>
-          </div>
-          <p className="text-sm text-muted-foreground">Register a new student to the system</p>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-        </LinkButton>
-
-        <LinkButton
+      {/* Quick Actions - 2 columns */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <QuickActionCard
           href="/admin/course/manage"
-          className="group flex flex-col items-start gap-3 p-6 h-auto rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <BookOpen className="h-5 w-5 text-primary" />
-            </div>
-            <span className="font-semibold text-foreground">Manage Courses</span>
-          </div>
-          <p className="text-sm text-muted-foreground">Add modules and videos to courses</p>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-        </LinkButton>
-
-        <LinkButton
-          href="/admin/student"
-          className="group flex flex-col items-start gap-3 p-6 h-auto rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <span className="font-semibold text-foreground">View Registrations</span>
-          </div>
-          <p className="text-sm text-muted-foreground">Review and approve student applications</p>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-        </LinkButton>
+          icon={<BookOpen className="h-5 w-5 text-primary" />}
+          title="Manage Courses"
+          description="Add modules, videos, and course content"
+        />
+        <QuickActionCard
+          href="/admin/payment"
+          icon={<Users className="h-5 w-5 text-primary" />}
+          title="Review Registrations"
+          description="Process pending applications and payments"
+        />
       </div>
 
+      {/* Pending Alert Banner */}
+      {pendingCount > 0 && (
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900">
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">
+                <span className="font-semibold text-amber-600">{pendingCount}</span> pending registration{pendingCount !== 1 ? "s" : ""} awaiting review
+              </p>
+              <p className="text-sm text-muted-foreground">Review and approve student applications</p>
+            </div>
+          </div>
+          <LinkButton href="/admin/student?filter=pending" size="sm" className="shrink-0 bg-amber-600 hover:bg-amber-700">
+            Review Now
+          </LinkButton>
+        </div>
+      )}
+
+      {/* Recent Courses Card */}
       <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
-          <CardTitle className="text-lg font-semibold">Recent Courses</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-3">
+          <div>
+            <CardTitle className="text-lg font-semibold">Recent Courses</CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">Latest courses added to the system</p>
+          </div>
           <LinkButton href="/admin/course/manage" variant="ghost" size="sm" className="-mr-2">
             View All
           </LinkButton>
@@ -164,8 +217,8 @@ export default function AdminDashboard() {
         <CardContent className="p-0">
           {courses.length === 0 ? (
             <div className="py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mx-auto mb-4">
-                <BookOpen className="h-8 w-8 text-muted-foreground" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mx-auto mb-4">
+                <BookOpen className="h-7 w-7 text-muted-foreground" />
               </div>
               <p className="font-medium text-foreground mb-1">No courses yet</p>
               <p className="text-sm text-muted-foreground mb-4">Create your first course to get started</p>
@@ -176,8 +229,9 @@ export default function AdminDashboard() {
           ) : (
             <div className="divide-y divide-border">
               {courses.slice(0, 5).map((course) => (
-                <div
+                <Link
                   key={course._id}
+                  href={`/admin/course/${course._id}`}
                   className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
@@ -191,77 +245,64 @@ export default function AdminDashboard() {
                       </p>
                     </div>
                   </div>
-                  <LinkButton href={`/admin/course/${course._id}`} variant="outline" size="sm">
+                  <Button variant="ghost" size="sm" className="shrink-0">
                     Manage
-                  </LinkButton>
-                </div>
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {pendingCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20 p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900">
-                <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">
-                  {pendingCount} pending registration{pendingCount !== 1 ? "s" : ""} awaiting review
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Review and approve student applications
-                </p>
-              </div>
-            </div>
-            <LinkButton href="/admin/student?filter=pending" className="shrink-0 bg-amber-600 hover:bg-amber-700">
-              Review Now
-            </LinkButton>
-          </div>
-        </div>
-      )}
-
+      {/* Draft Students Modal */}
       {showDraftModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-foreground">Draft Students</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Draft Students</h2>
+                <p className="text-sm text-muted-foreground">{draftCount} incomplete registration{draftCount !== 1 ? "s" : ""}</p>
+              </div>
               <button
                 onClick={() => setShowDraftModal(false)}
-                className="rounded-lg p-2 hover:bg-muted"
+                className="rounded-lg p-2 hover:bg-muted transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
-            {draftCount === 0 ? (
-              <p className="text-muted-foreground py-8 text-center">No draft registrations found.</p>
-            ) : (
-              <div className="max-h-96 overflow-y-auto space-y-2">
-                {registrations
-                  .filter((r) => r.status === "draft")
-                  .map((draft) => (
-                    <Link
-                      key={draft._id}
-                      href={`/admin/add-student?edit=${draft._id}`}
-                      onClick={() => setShowDraftModal(false)}
-                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {draft.basicDetails?.fullName || draft.basicDetails?.firstName || "Unnamed"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {draft.basicDetails?.phone || "No phone"}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </Link>
-                  ))}
-              </div>
-            )}
+            <div className="p-4">
+              {draftCount === 0 ? (
+                <div className="py-8 text-center">
+                  <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No draft registrations found</p>
+                </div>
+              ) : (
+                <div className="max-h-80 overflow-y-auto space-y-2">
+                  {registrations
+                    .filter((r) => r.status === "draft")
+                    .map((draft) => (
+                      <Link
+                        key={draft._id}
+                        href={`/admin/add-student?edit=${draft._id}`}
+                        onClick={() => setShowDraftModal(false)}
+                        className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/30 transition-all"
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {draft.basicDetails?.firstName} {draft.basicDetails?.lastName}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {draft.basicDetails?.phone || "No phone"} • Created {draft.createdAt ? new Date(draft.createdAt).toLocaleDateString() : "recently"}
+                          </p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </Link>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
