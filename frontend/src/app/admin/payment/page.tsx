@@ -146,7 +146,7 @@ export default function PaymentPage() {
     setConfirmDialog({
       open: true,
       title: "Approve Registration",
-      description: `Are you sure you want to approve the registration for ${reg?.basicDetails?.firstName} ${reg?.basicDetails?.lastName}?`,
+      description: "Are you sure you want to approve the registration for " + (reg?.basicDetails?.firstName || "") + " " + (reg?.basicDetails?.lastName || "") + "?",
       variant: "default",
       action: "approve",
       id,
@@ -158,7 +158,7 @@ export default function PaymentPage() {
     setConfirmDialog({
       open: true,
       title: "Reject Registration",
-      description: `Are you sure you want to reject the registration for ${reg?.basicDetails?.firstName} ${reg?.basicDetails?.lastName}?`,
+      description: "Are you sure you want to reject the registration for " + (reg?.basicDetails?.firstName || "") + " " + (reg?.basicDetails?.lastName || "") + "?",
       variant: "destructive",
       action: "reject",
       id,
@@ -171,10 +171,10 @@ export default function PaymentPage() {
 
     try {
       await registrationService.updateStatus(id, action);
-      success(`Registration ${action}ed successfully`);
+      success("Registration " + action + "ed successfully");
       loadRegistrations();
     } catch (error: any) {
-      showError(error.response?.data?.message || `Failed to ${action} registration`);
+      showError(error.response?.data?.message || "Failed to " + action + " registration");
     } finally {
       setProcessingId(null);
       setConfirmDialog(prev => ({ ...prev, open: false }));
@@ -187,19 +187,24 @@ export default function PaymentPage() {
       success(action === "approve" ? "Registration approved successfully!" : "Registration rejected");
       loadRegistrations();
     } catch (error: any) {
-      showError(error.response?.data?.message || `Failed to ${action} registration`);
+      showError(error.response?.data?.message || "Failed to " + action + " registration");
     }
   };
 
   const filteredRegistrations = registrations.filter((reg) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    return (
-      reg.basicDetails?.firstName?.toLowerCase().includes(query) ||
-      reg.basicDetails?.lastName?.toLowerCase().includes(query) ||
-      reg.basicDetails?.email?.toLowerCase().includes(query) ||
-      reg.contact?.phone?.includes(query)
-    );
+    const firstName = reg.basicDetails?.firstName || "";
+    const lastName = reg.basicDetails?.lastName || "";
+    const fullName = (firstName + " " + lastName).toLowerCase();
+    const email = reg.basicDetails?.email?.toLowerCase() || "";
+    const phone = reg.contact?.phone || "";
+    
+    if (fullName.indexOf(query) === -1 && email.indexOf(query) === -1 && phone.indexOf(query) === -1) {
+      return false;
+    }
+    
+    return true;
   });
 
   if (loading) {
@@ -209,8 +214,8 @@ export default function PaymentPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payment & Approval"
-        description="Manage pending registrations, update payment details, and approve students"
+        title="Payment Overview"
+        description="Track all student registrations and their payment status"
         breadcrumbs={[
           { label: "Admin", href: "/admin/dashboard" },
           { label: "Payment" },
@@ -292,7 +297,7 @@ export default function PaymentPage() {
                     <div className="rounded-lg bg-muted px-3 py-2">
                       <p className="text-xs text-muted-foreground mb-1">Payment Amount</p>
                       <p className="font-semibold text-foreground">
-                        {reg.payment?.amount ? `₹${reg.payment.amount}` : "Not set"}
+                        {reg.payment?.amount ? "₹" + reg.payment.amount : "Not set"}
                       </p>
                     </div>
                     <div className="rounded-lg bg-muted px-3 py-2">
@@ -335,7 +340,7 @@ export default function PaymentPage() {
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                   </Button>
-                  <Link href={`/admin/student/view/${reg._id}`}>
+                  <Link href={"/admin/student/view/" + reg._id}>
                     <Button variant="outline" size="sm" className="w-full md:w-auto">
                       <Eye className="mr-2 h-4 w-4" />
                       View Details

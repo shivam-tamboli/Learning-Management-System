@@ -353,7 +353,7 @@ export default function StudentListPage() {
             return (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => { setFilter(f); setCurrentPage(1); }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                   isActive
                     ? "bg-card text-foreground shadow-sm"
@@ -558,6 +558,46 @@ export default function StudentListPage() {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Credentials Row - Only show for approved students */}
+                  {reg.status === "approved" && (reg.credentials || reg.userId) && (
+                    <div className="col-span-12 bg-emerald-50 dark:bg-emerald-900/20 border-t border-emerald-200 dark:border-emerald-800 px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Credentials:</span>
+                        <span className="text-sm">
+                          <span className="text-muted-foreground">Email:</span>{" "}
+                          <span className="font-mono font-medium text-foreground">{reg.basicDetails?.email || "—"}</span>
+                          {(reg.credentials?.password || reg.createdAt) && (
+                            <>
+                              <span className="mx-3 text-muted-foreground">|</span>
+                              <span className="text-muted-foreground">Password:</span>{" "}
+                              <span className="font-mono font-medium text-foreground">{reg.credentials?.password || "Auto-generated"}</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {reg.createdAt && (
+                          <span>Created: {new Date(reg.createdAt).toLocaleDateString()}</span>
+                        )}
+                        {reg.updatedAt && reg.updatedAt !== reg.createdAt && (
+                          <span> | Updated: {new Date(reg.updatedAt).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timestamp Row - For non-approved students */}
+                  {reg.status !== "approved" && (reg.createdAt || reg.updatedAt) && (
+                    <div className="col-span-12 bg-muted/30 border-t border-border px-4 py-2 flex items-center justify-end gap-4 text-xs text-muted-foreground">
+                      {reg.createdAt && (
+                        <span>Created: {new Date(reg.createdAt).toLocaleDateString()}</span>
+                      )}
+                      {reg.updatedAt && reg.updatedAt !== reg.createdAt && (
+                        <span>Updated: {new Date(reg.updatedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

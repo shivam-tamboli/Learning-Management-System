@@ -333,7 +333,95 @@ export default function ViewRegistrationPage() {
           </CardContent>
         </Card>
 
-        {registration.status === "approved" && registration.createdAt && (
+        {/* Credentials Section - Only for approved students */}
+        {registration.status === "approved" && (registration.credentials || registration.userId) && (
+          <Card className="overflow-hidden border-emerald-200 dark:border-emerald-800">
+            <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4 bg-emerald-50 dark:bg-emerald-900/20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-800">
+                <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <CardTitle className="text-base text-emerald-800 dark:text-emerald-300">Login Credentials</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Student ID / Username</p>
+                  <p className="mt-0.5 font-mono font-semibold text-foreground">
+                    {registration.userId || registration.credentials?.email?.split('@')[0] || "Not available"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Password</p>
+                  <p className="mt-0.5 font-mono font-semibold text-foreground">
+                    {registration.credentials?.password || "Auto-generated on approval"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Email</p>
+                  <p className="mt-0.5 text-foreground">
+                    {registration.basicDetails?.email || "Not available"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Temporary Login</p>
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    Student should change password on first login
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Timeline Section - Show for approved and rejected */}
+        {(registration.status === "approved" || registration.status === "rejected") && registration.createdAt && (
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
+              <CardTitle className="text-base">Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Registration Created</p>
+                  <p className="mt-0.5">{new Date(registration.createdAt).toLocaleString()}</p>
+                </div>
+                {registration.updatedAt && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
+                    <p className="mt-0.5">{new Date(registration.updatedAt).toLocaleString()}</p>
+                  </div>
+                )}
+                {registration.approvedAt && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Approved At</p>
+                    <p className="mt-0.5">{new Date(registration.approvedAt).toLocaleString()}</p>
+                  </div>
+                )}
+                {registration.rejectedAt && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Rejected At</p>
+                    <p className="mt-0.5">{new Date(registration.rejectedAt).toLocaleString()}</p>
+                  </div>
+                )}
+                {registration.previouslyRejected && (
+                  <div className="lg:col-span-2 mt-2">
+                    <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                      Previously rejected, re-approved on {new Date(registration.approvedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Fallback Timeline for draft/pending without createdAt */}
+        {(registration.status === "draft" || registration.status === "pending") && registration.createdAt && !(
+          registration.status === "approved" || registration.status === "rejected"
+        ) && (
           <Card className="overflow-hidden">
             <CardHeader className="flex flex-row items-center gap-3 border-b border-border pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -344,20 +432,13 @@ export default function ViewRegistrationPage() {
             <CardContent className="pt-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Registration Started</p>
+                  <p className="text-sm font-medium text-muted-foreground">Registration Created</p>
                   <p className="mt-0.5">{new Date(registration.createdAt).toLocaleString()}</p>
                 </div>
-                {registration.approvedAt && (
+                {registration.updatedAt && (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Approved At</p>
-                    <p className="mt-0.5">{new Date(registration.approvedAt).toLocaleString()}</p>
-                  </div>
-                )}
-                {registration.previouslyRejected && (
-                  <div className="sm:col-span-2 mt-2">
-                    <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
-                      Previously rejected, re-approved on {new Date(registration.approvedAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
+                    <p className="mt-0.5">{new Date(registration.updatedAt).toLocaleString()}</p>
                   </div>
                 )}
               </div>
